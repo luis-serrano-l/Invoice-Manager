@@ -1,0 +1,36 @@
+<div class="flex space-x-40">
+  <div class="bg-white shadow rounded px-8 pt-6 pb-8 mb-4 basis-1/2">
+    <h2 class="text-center font-semibold leading-6 text-blue-700">
+      INVENTORY
+    </h2>
+    <.table id="products" rows={@products}>
+      <:col :let={product} label="Name"><%= product.name %></:col>
+      <:col :let={product} label="Price"><%= product.price %></:col>
+      <:col :let={product} label="Stock"><%= product.stock %></:col>
+    </.table>
+  </div>
+  <div :if={!@new_product} class="bg-white rounded px-2 pt-2 pb-8 mb-4 basis-1/4">
+    <.button phx-click="new_product" phx-disable-with="New...">
+      New product
+    </.button>
+  </div>
+  <div :if={@new_product} class="bg-white shadow rounded px-2 pt-2 pb-8 mb-4 basis-1/4 relative">
+    <.simple_form for={@form} phx-change="validate" phx-submit="add">
+      <.input field={@form[:name]} type="text" label="Name" autocomplete="off" />
+      <.input field={@form[:price]} type="number" label="Price" autocomplete="off" step=".01" />
+      <.input field={@form[:stock]} type="number" label="Stock" autocomplete="off" />
+      <:actions>
+        <.button phx-disable-with="Adding...">
+          Add product
+        </.button>
+        <.button
+          phx-click="hide"
+          phx-disable-with="Hiding..."
+          class="bg-blue-100 px-1 pt-0 pb-0 text-gray-900 hover:bg-blue-200 absolute top-[5px] right-[10px]"
+        >
+          X
+        </.button>
+      </:actions>
+    </.simple_form>
+  </div>
+</div>

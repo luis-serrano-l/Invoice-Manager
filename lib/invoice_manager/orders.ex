@@ -4,6 +4,7 @@ defmodule InvoiceManager.Orders do
   """
 
   import Ecto.Query, warn: false
+  alias InvoiceManager.Business.Company
   alias InvoiceManager.Repo
 
   alias InvoiceManager.Orders.Invoice
@@ -49,9 +50,12 @@ defmodule InvoiceManager.Orders do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_invoice(attrs \\ %{}) do
+  def create_invoice(company_name, attrs \\ %{}) do
+    company = Repo.get_by(Company, name: company_name)
+    invoice_params = Map.put(attrs, "company_id", company.id)
+
     %Invoice{}
-    |> Invoice.changeset(attrs)
+    |> Invoice.changeset(invoice_params)
     |> Repo.insert()
   end
 

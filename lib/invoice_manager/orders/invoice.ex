@@ -1,5 +1,5 @@
 defmodule InvoiceManager.Orders.Invoice do
-  alias InvoiceManager.Inventory.Company
+  alias InvoiceManager.Business.Company
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -38,8 +38,8 @@ defmodule InvoiceManager.Orders.Invoice do
       :operation_date,
       :tax_rate,
       :discount,
-      :total,
-      :extra_info
+      :total
     ])
+    |> validate_number(:total, greater_than: 0)
   end
 end

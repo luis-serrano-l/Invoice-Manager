@@ -1,0 +1,21 @@
+<!-- <.link href={~p"/invoice_manager/browser/#{@company_name}"}>
+  Show invoices
+</.link> -->
+<ul class="mt-8">
+  <li class="mt-6">
+    <.link
+      href={~p"/invoice_manager/#{@company_name}/editor"}
+      class="text-lg leading-6 text-blue-900 font-semibold hover:text-blue-700"
+    >
+      Create Invoice
+    </.link>
+  </li>
+  <li class="mt-6">
+    <.link
+      href={~p"/invoice_manager/#{@company_name}/my_products"}
+      class="text-lg leading-6 text-blue-900 font-semibold hover:text-blue-700"
+    >
+      Inventory
+    </.link>
+  </li>
+</ul>

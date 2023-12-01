@@ -66,6 +66,12 @@ defmodule InvoiceManagerWeb.Router do
 
     live_session :require_authenticated_user,
       on_mount: [{InvoiceManagerWeb.UserAuth, :ensure_authenticated}] do
+      live "/invoice_manager/:company_name", ManagerHomeLive
+      # live "/invoice_manager/browser/:company_name", Browser
+      live "/invoice_manager/:company_name/editor", EditorLive
+      live "/invoice_manager/:company_name/my_products", MyProductsLive
+      live "/invoice_manager", GetCompanyLive
+      live "/invoice_manager/company_name/registration", RegisterCompanyLive
       live "/users/settings", UserSettingsLive, :edit
       live "/users/settings/confirm_email/:token", UserSettingsLive, :confirm_email
     end

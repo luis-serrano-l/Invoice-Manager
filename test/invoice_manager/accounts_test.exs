@@ -4,7 +4,7 @@ defmodule InvoiceManager.AccountsTest do
   alias InvoiceManager.Accounts
 
   describe "users_and_companies" do
-    alias InvoiceManager.Accounts.UserAndCompany
+    alias InvoiceManager.Business.UserAndCompany
 
     import InvoiceManager.AccountsFixtures
 
@@ -23,7 +23,9 @@ defmodule InvoiceManager.AccountsTest do
     test "create_user_and_company/1 with valid data creates a user_and_company" do
       valid_attrs = %{admin: true}
 
-      assert {:ok, %UserAndCompany{} = user_and_company} = Accounts.create_user_and_company(valid_attrs)
+      assert {:ok, %UserAndCompany{} = user_and_company} =
+               Accounts.create_user_and_company(valid_attrs)
+
       assert user_and_company.admin == true
     end
 
@@ -35,20 +37,28 @@ defmodule InvoiceManager.AccountsTest do
       user_and_company = user_and_company_fixture()
       update_attrs = %{admin: false}
 
-      assert {:ok, %UserAndCompany{} = user_and_company} = Accounts.update_user_and_company(user_and_company, update_attrs)
+      assert {:ok, %UserAndCompany{} = user_and_company} =
+               Accounts.update_user_and_company(user_and_company, update_attrs)
+
       assert user_and_company.admin == false
     end
 
     test "update_user_and_company/2 with invalid data returns error changeset" do
       user_and_company = user_and_company_fixture()
-      assert {:error, %Ecto.Changeset{}} = Accounts.update_user_and_company(user_and_company, @invalid_attrs)
+
+      assert {:error, %Ecto.Changeset{}} =
+               Accounts.update_user_and_company(user_and_company, @invalid_attrs)
+
       assert user_and_company == Accounts.get_user_and_company!(user_and_company.id)
     end
 
     test "delete_user_and_company/1 deletes the user_and_company" do
       user_and_company = user_and_company_fixture()
       assert {:ok, %UserAndCompany{}} = Accounts.delete_user_and_company(user_and_company)
-      assert_raise Ecto.NoResultsError, fn -> Accounts.get_user_and_company!(user_and_company.id) end
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Accounts.get_user_and_company!(user_and_company.id)
+      end
     end
 
     test "change_user_and_company/1 returns a user_and_company changeset" do

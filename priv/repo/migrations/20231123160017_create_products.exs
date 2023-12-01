@@ -12,5 +12,8 @@ defmodule InvoiceManager.Repo.Migrations.CreateProducts do
     end
 
     create index(:products, [:company_id])
+    create unique_index(:products, [:name, :company_id], name: :products_name_company_id_index)
   end
 end
+
+# create unique_index(:products, [:name, :company_id])

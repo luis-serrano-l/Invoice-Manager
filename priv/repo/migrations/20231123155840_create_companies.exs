@@ -11,5 +11,7 @@ defmodule InvoiceManager.Repo.Migrations.CreateCompanies do
 
       timestamps()
     end
+
+    create unique_index(:companies, [:name])
   end
 end

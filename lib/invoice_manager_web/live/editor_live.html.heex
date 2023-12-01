@@ -1,0 +1,171 @@
+<div class="flex ">
+  <div class="flex space-x-8 bg-amber-50 shadow rounded px-8 pt-6 pb-8 mb-4 basis-1/3">
+    <div class="bg-white shadow rounded px-6 pt-6 pb-4 mb-4 basis-1/2 flex-auto w-64">
+      <.simple_form for={@form} phx-change="validate" phx-submit="add">
+        <.input
+          field={@form[:invoice_number]}
+          type="text"
+          label="Invoice Number"
+          autocomplete="off"
+        />
+        <.input field={@form[:billing_date]} type="date" label="Billing Date" autocomplete="off" />
+        <.input
+          field={@form[:operation_date]}
+          type="date"
+          label="Operation Date"
+          autocomplete="off"
+        />
+        <div class="flex flex-wrap -mx-3 mb-6">
+          <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
+            <.input
+              field={@form[:tax_rate]}
+              type="number"
+              label="Tax Rate"
+              autocomplete="off"
+              step=".01"
+            />
+          </div>
+          <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
+            <.input
+              field={@form[:discount]}
+              type="number"
+              label="Discount"
+              autocomplete="off"
+              step=".01"
+            />
+          </div>
+        </div>
+        <p>Total: <%= @total %></p>
+        <.input field={@form[:extra_info]} type="textarea" label="Extra Info" autocomplete="off" />
+        <:actions>
+          <.button phx-disable-with="Saving...">
+            Save
+          </.button>
+        </:actions>
+      </.simple_form>
+    </div>
+    <div>
+      <div class="bg-white shadow rounded px-8 pt-6 pb-8 mb-4">
+        <h2 class="text-center font-semibold leading-6 text-blue-900">
+          ITEMS
+        </h2>
+
+        <table class="w-[40rem] mt-4 sm:w-full">
+          <thead class="text-sm text-left leading-6 text-zinc-500">
+            <tr>
+              <th class="p-0 pr-6 pb-4 font-normal">Name</th>
+              <th class="p-0 pr-6 pb-4 font-normal">Price</th>
+              <th class="p-0 pr-6 pb-4 font-normal">Amount</th>
+              <th class="p-0 pr-6 pb-4 font-normal"></th>
+              <th class="relative p-0 pb-4"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody
+            id="products"
+            class="relative divide-y divide-zinc-100 border-t border-zinc-200 text-sm leading-6 text-zinc-700"
+          >
+            <div :for={item <- @items} class="group hover:bg-zinc-50">
+              <tr
+                phx-click="change_amount"
+                phx-value-item_id={item.id}
+                class="group hover:bg-zinc-50"
+              >
+                <td class="relative p-0 ">
+                  <div class="block py-4 pr-6">
+                    <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl">
+                    </span>
+                    <span class="relative font-semibold text-zinc-900">
+                      <%= item.name %>
+                    </span>
+                  </div>
+                </td>
+                <td class="relative p-0 ">
+                  <div class="block py-4 pr-6">
+                    <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl">
+                    </span>
+                    <span class="relative ">
+                      <%= item.price %>
+                    </span>
+                  </div>
+                </td>
+                <td class="relative p-0 ">
+                  <div class="block py-4 pr-6">
+                    <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl">
+                    </span>
+                    <span class="relative text-green-900 font-semibold ">
+                      <%= item.stock %>
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <button class="mt-1" phx-click="add" phx-value-item_id={item.id}>
+                    <svg
+                      class="w-5 h-5 shadow"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                  <button phx-click="substract" phx-value-item_id={item.id}>
+                    <svg
+                      class="w-5 h-5 shadow"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            </div>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="bg-white rounded px-10 pt-2 pb-8 mb-4">
+    <div :if={!@new_item}>
+      <.button phx-click="new_item" phx-disable-with="New...">
+        New item
+      </.button>
+    </div>
+    <div :if={@new_item} class="bg-white shadow rounded px-6 pt-6 pb-8 mb-4">
+      <div class="relative">
+        <div class="">
+          <h2 class="px-10 font-semibold text-blue-700">
+            INVENTORY
+          </h2>
+        </div>
+        <.button
+          phx-click="hide_inventory"
+          phx-disable-with="Hiding..."
+          class="bg-blue-100 px-1 pt-0 pb-0 text-gray-900 hover:bg-blue-200 absolute top-[-10px] right-[-10px]"
+        >
+          X
+        </.button>
+      </div>
+
+      <.table id="products" rows={@products}>
+        <:col :let={product} label="Name"><%= product.name %></:col>
+        <:col :let={product} label="Price"><%= product.price %></:col>
+        <:col :let={product} label="Stock"><%= product.stock %></:col>
+        <:action :let={product}>
+          <button phx-click="select_item" phx-value-item_id={product.id}>+</button>
+        </:action>
+      </.table>
+    </div>
+  </div>
+</div>

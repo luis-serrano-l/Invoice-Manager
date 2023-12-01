@@ -2,7 +2,7 @@ defmodule InvoiceManager.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias InvoiceManager.Accounts.UserAndCompany
+  alias InvoiceManager.Business.UserAndCompany
 
   schema "users" do
     field :email, :string
