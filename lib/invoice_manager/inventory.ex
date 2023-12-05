@@ -13,7 +13,8 @@ defmodule InvoiceManager.Inventory do
       from company in Company,
         where: company.name == ^company_name,
         join: product in assoc(company, :products),
-        select: product
+        select: product,
+        order_by: product.inserted_at
 
     Repo.all(products)
   end
@@ -34,6 +35,17 @@ defmodule InvoiceManager.Inventory do
   """
   def get_product!(id), do: Repo.get!(Product, id)
 
+  def get_product(company_name, id) do
+    product =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: product in assoc(company, :products),
+        where: product.id == ^id,
+        select: product
+
+    Repo.one(product)
+  end
+
   @doc """
   Creates a product.
 
@@ -53,6 +65,7 @@ defmodule InvoiceManager.Inventory do
     %Product{}
     |> Product.changeset(product_params)
     |> Repo.insert()
+    |> IO.inspect(label: "CREATED PRODUCT")
   end
 
   @doc """
@@ -67,6 +80,20 @@ defmodule InvoiceManager.Inventory do
       {:error, %Ecto.Changeset{}}
 
   """
+
+  def update_product(product, :subtract) do
+    product
+    |> Product.changeset(%{"stock" => product.stock - 1})
+    |> Repo.update()
+    |> IO.inspect(label: "CHANGED PRODUCT")
+  end
+
+  def update_product(product, :add) do
+    product
+    |> Product.changeset(%{"stock" => product.stock + 1})
+    |> Repo.update()
+  end
+
   def update_product(%Product{} = product, attrs) do
     product
     |> Product.changeset(attrs)

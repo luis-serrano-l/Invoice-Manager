@@ -2,12 +2,14 @@ defmodule InvoiceManager.Inventory.Product do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias InvoiceManager.Orders.Item
   alias InvoiceManager.Business.Company
 
   schema "products" do
     field :name, :string
     field :price, :decimal
     field :stock, :integer, default: 0
+    has_many :item, Item
     belongs_to :company, Company
 
     timestamps()
@@ -22,7 +24,7 @@ defmodule InvoiceManager.Inventory.Product do
       message: "Must start with an alphanumberic character"
     )
     |> validate_number(:price, greater_than: 0.0)
-    |> validate_number(:stock, greater_than: 0)
+    |> validate_number(:stock, greater_than: -1)
     |> unique_constraint(:name, name: :products_name_company_id_index)
   end
 end

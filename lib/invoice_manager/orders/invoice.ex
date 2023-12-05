@@ -32,14 +32,6 @@ defmodule InvoiceManager.Orders.Invoice do
       :total,
       :extra_info
     ])
-    |> validate_required([
-      :invoice_number,
-      :billing_date,
-      :operation_date,
-      :tax_rate,
-      :discount,
-      :total
-    ])
     |> validate_number(:total, greater_than: 0)
   end
 end
