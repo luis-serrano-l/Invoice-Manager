@@ -28,7 +28,8 @@ defmodule InvoiceManagerWeb.EditorLive do
         products: products,
         items: items,
         new_item: true,
-        total: total
+        total: total,
+        deleting: false
       )
 
     {:ok, socket}
@@ -76,7 +77,7 @@ defmodule InvoiceManagerWeb.EditorLive do
   def handle_event("select_item", %{"item_id" => product_id} = _params, socket) do
     product = Inventory.get_product!(product_id)
 
-    Process.send_after(self(), :clear_flash, 1600)
+    Process.send_after(self(), :clear_flash, 1200)
 
     if product.stock == 0 do
       {:noreply,
@@ -112,14 +113,14 @@ defmodule InvoiceManagerWeb.EditorLive do
 
     cond do
       !product ->
-        Process.send_after(self(), :clear_flash, 1300)
+        Process.send_after(self(), :clear_flash, 1200)
 
         {:noreply,
          socket
          |> put_flash(:error, "product no longer exists")}
 
       product.stock == 0 ->
-        Process.send_after(self(), :clear_flash, 1300)
+        Process.send_after(self(), :clear_flash, 1200)
 
         {:noreply,
          socket
@@ -151,7 +152,7 @@ defmodule InvoiceManagerWeb.EditorLive do
 
     cond do
       item.quantity == 0 ->
-        Process.send_after(self(), :clear_flash, 1300)
+        Process.send_after(self(), :clear_flash, 1200)
 
         {:noreply,
          socket
@@ -170,6 +171,31 @@ defmodule InvoiceManagerWeb.EditorLive do
          |> assign(products: products)
          |> assign(items: items)}
     end
+  end
+
+  def handle_event("change-deleting-option", _, socket) do
+    {:noreply,
+     socket
+     |> assign(deleting: !socket.assigns.deleting)}
+  end
+
+  def handle_event("delete-item", %{"item_id" => item_id} = _params, socket) do
+    item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, item_id)
+    product = Inventory.get_product(socket.assigns.company_name, item.product_id)
+    Orders.delete_item(item)
+    Inventory.update_product(product, :add, item.quantity)
+    Process.send_after(self(), :clear_flash, 1200)
+
+    items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
+    products = Inventory.list_products(socket.assigns.company_name)
+    total = calculate_total(items, products)
+
+    {:noreply,
+     socket
+     |> assign(items: items)
+     |> assign(products: products)
+     |> assign(total: total)
+     |> put_flash(:info, "Deleted item: #{product.name}")}
   end
 
   def handle_info(:clear_flash, socket) do

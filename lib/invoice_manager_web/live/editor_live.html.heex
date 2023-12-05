@@ -46,12 +46,23 @@
         </:actions>
       </.simple_form>
     </div>
-    <div>
+    <div class="relative">
       <div class="bg-white shadow rounded px-8 pt-6 pb-8 mb-4">
         <h2 class="text-center font-semibold leading-6 text-blue-900">
           ITEMS
         </h2>
-
+        <.button
+          phx-click="change-deleting-option"
+          phx-disable-with="Changing..."
+          class={"""
+          px-1 pt-0 pb-0 absolute top-[-15px] right-[-30px]
+          #{if !@deleting, do: "bg-orange-200 hover:bg-orange-300", else: "bg-blue-200 hover:bg-blue-300"}
+          """}
+        >
+          <span class="font-normal  text-gray-900">
+            <%= if !@deleting, do: "Remove one", else: "Stop removing" %>
+          </span>
+        </.button>
         <table class="w-[40rem] mt-4 sm:w-full">
           <thead class="text-sm text-left leading-6 text-zinc-500">
             <tr>
@@ -66,10 +77,24 @@
             id="products"
             class="relative divide-y divide-zinc-100 border-t border-zinc-200 text-sm leading-6 text-zinc-700"
           >
-            <div :for={item <- @items} class="group hover:bg-zinc-50">
-              <tr class="group hover:bg-zinc-50">
+            <div :for={item <- @items}>
+              <tr class={
+                  """
+                  #{if @deleting, do: "", else: "group hover:bg-zinc-50"}
+                  """
+                }>
                 <td class="relative p-0 ">
-                  <div class="block py-4 pr-6">
+                  <div
+                    class={
+                  """
+                  block py-4 pr-6
+                  #{if @deleting, do: "focus:cursor-auto bg-red-50 hover:bg-red-200 hover:cursor-pointer", else: "group hover:bg-zinc-50"}
+                  """
+                }
+                    phx-click={"#{if @deleting, do: "delete-item", else: ""}"}
+                    phx-value-item_id={item.id}
+                    data-confirm={"#{if @deleting, do: "Are you sure you want to remove his item?", else: ""}"}
+                  >
                     <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl">
                     </span>
                     <span class="relative font-semibold text-zinc-900">

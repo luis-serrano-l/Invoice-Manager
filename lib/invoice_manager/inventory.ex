@@ -85,20 +85,19 @@ defmodule InvoiceManager.Inventory do
     product
     |> Product.changeset(%{"stock" => product.stock - 1})
     |> Repo.update()
-    |> IO.inspect(label: "CHANGED PRODUCT")
   end
 
-  def update_product(product, :add) do
+  def update_product(product, :add, quantity \\ 1) do
     product
-    |> Product.changeset(%{"stock" => product.stock + 1})
+    |> Product.changeset(%{"stock" => product.stock + quantity})
     |> Repo.update()
   end
 
-  def update_product(%Product{} = product, attrs) do
-    product
-    |> Product.changeset(attrs)
-    |> Repo.update()
-  end
+  # def update_product(%Product{} = product, attrs) do
+  #  product
+  #  |> Product.changeset(attrs)
+  #  |> Repo.update()
+  # end
 
   @doc """
   Deletes a product.
