@@ -68,7 +68,8 @@ defmodule InvoiceManagerWeb.Router do
       on_mount: [{InvoiceManagerWeb.UserAuth, :ensure_authenticated}] do
       live "/invoice_manager/:company_name", ManagerHomeLive
       # live "/invoice_manager/browser/:company_name", Browser
-      live "/invoice_manager/:company_name/editor", EditorLive
+      live "/invoice_manager/:company_name/editor/:customer_name/:invoice_id", EditorLive
+      live "/invoice_manager/:company_name/open_editor", OpenEditorLive
       live "/invoice_manager/:company_name/my_products", MyProductsLive
       live "/invoice_manager", GetCompanyLive
       live "/invoice_manager/company_name/registration", RegisterCompanyLive

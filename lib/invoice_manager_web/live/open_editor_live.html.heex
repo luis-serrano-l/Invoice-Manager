@@ -1,0 +1,14 @@
+<.simple_form for={@form} phx-submit="create">
+  <.input
+    field={@form[:name]}
+    type="text"
+    placeholder="Who is the invoice for?"
+    label="Customer"
+    autocomplete="off"
+  />
+  <:actions>
+    <.button phx-disable-with="Creating...">
+      Create
+    </.button>
+  </:actions>
+</.simple_form>

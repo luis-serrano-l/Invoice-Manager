@@ -50,13 +50,17 @@ defmodule InvoiceManager.Orders do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_invoice(company_name, attrs \\ %{}) do
+  def create_invoice(company_name, customer_name) do
     company = Repo.get_by(Company, name: company_name)
-    invoice_params = Map.put(attrs, "company_id", company.id)
+    customer = Repo.get_by(Company, name: customer_name)
 
-    %Invoice{}
-    |> Invoice.changeset(invoice_params)
-    |> Repo.insert()
+    if customer do
+      Ecto.build_assoc(company, :invoices, customer_id: customer.id)
+      |> Repo.insert()
+      |> IO.inspect(label: "INSERTED INVOICE NOW")
+    else
+      {:error, "Company does not exist"}
+    end
   end
 
   @doc """
@@ -117,8 +121,17 @@ defmodule InvoiceManager.Orders do
       [%Item{}, ...]
 
   """
-  def list_items do
-    Repo.all(Item)
+  def list_items(company_name, invoice_id) do
+    items =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: invoice in assoc(company, :invoices),
+        where: invoice.id == ^invoice_id,
+        join: item in assoc(invoice, :items),
+        select: item,
+        order_by: item.inserted_at
+
+    Repo.all(items)
   end
 
   @doc """
@@ -137,6 +150,19 @@ defmodule InvoiceManager.Orders do
   """
   def get_item!(id), do: Repo.get!(Item, id)
 
+  def get_item(company_name, invoice_id, item_id) do
+    item =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: invoice in assoc(company, :invoices),
+        where: invoice.id == ^invoice_id,
+        join: item in assoc(invoice, :items),
+        where: item.id == ^item_id,
+        select: item
+
+    Repo.one(item)
+  end
+
   @doc """
   Creates a item.
 
@@ -149,10 +175,21 @@ defmodule InvoiceManager.Orders do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_item(attrs \\ %{}) do
-    %Item{}
-    |> Item.changeset(attrs)
+  def create_item(product_id, company_name, invoice_id) do
+    invoice =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: invoice in assoc(company, :invoices),
+        where: invoice.id == ^invoice_id,
+        select: invoice
+
+    invoice = Repo.one(invoice)
+    item = Ecto.build_assoc(invoice, :items, product_id: product_id)
+
+    item
+    |> Item.changeset(%{})
     |> Repo.insert()
+    |> IO.inspect(label: "CREATED ITEM now!!")
   end
 
   @doc """
@@ -167,9 +204,16 @@ defmodule InvoiceManager.Orders do
       {:error, %Ecto.Changeset{}}
 
   """
-  def update_item(%Item{} = item, attrs) do
+
+  def update_item(item, :add) do
     item
-    |> Item.changeset(attrs)
+    |> Item.changeset(%{"quantity" => item.quantity + 1})
+    |> Repo.update()
+  end
+
+  def update_item(item, :subtract) do
+    item
+    |> Item.changeset(%{"quantity" => item.quantity - 1})
     |> Repo.update()
   end
 

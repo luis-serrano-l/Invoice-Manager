@@ -4,18 +4,32 @@ defmodule InvoiceManagerWeb.EditorLive do
   alias InvoiceManager.Orders.Invoice
   alias InvoiceManager.Orders
 
-  def mount(%{"company_name" => company_name}, _session, socket) do
+  def mount(
+        %{
+          "company_name" => company_name,
+          "customer_name" => customer_name,
+          "invoice_id" => invoice_id
+        },
+        _session,
+        socket
+      ) do
+    invoice_id = String.to_integer(invoice_id)
     invoice_changeset = Orders.change_invoice(%Invoice{})
     products = Inventory.list_products(company_name)
+    items = Orders.list_items(company_name, invoice_id)
+    total = calculate_total(items, products)
 
     socket =
       assign(socket,
         company_name: company_name,
+        customer_name: customer_name,
+        invoice_id: invoice_id,
         form: to_form(invoice_changeset),
         products: products,
-        items: [],
+        items: items,
         new_item: true,
-        total: 0
+        total: total,
+        deleting: false
       )
 
     {:ok, socket}
@@ -32,7 +46,11 @@ defmodule InvoiceManagerWeb.EditorLive do
   end
 
   def handle_event("save", %{"invoice" => invoice_params}, socket) do
-    case Orders.create_invoice(socket.assigns.company_name, invoice_params) do
+    invoice = Orders.get_invoice!(socket.assigns.invoice_id)
+
+    Process.send_after(self(), :clear_flash, 1500)
+
+    case Orders.update_invoice(invoice, invoice_params) do
       {:ok, invoice} ->
         {:noreply,
          socket
@@ -59,64 +77,141 @@ defmodule InvoiceManagerWeb.EditorLive do
   def handle_event("select_item", %{"item_id" => product_id} = _params, socket) do
     product = Inventory.get_product!(product_id)
 
-    if product in socket.assigns.items do
+    Process.send_after(self(), :clear_flash, 1200)
+
+    if product.stock == 0 do
       {:noreply,
        socket
-       |> put_flash(:error, "Already selected #{product.name}")}
+       |> put_flash(:error, "Out of stock")}
     else
-      {:noreply,
-       socket
-       |> assign(items: socket.assigns.items ++ [product])
-       |> assign(total: socket.assigns.total + Decimal.to_float(product.price))
-       |> put_flash(:info, "Selected product with id: #{product_id}")}
+      case Orders.create_item(product.id, socket.assigns.company_name, socket.assigns.invoice_id) do
+        {:ok, _item} ->
+          Inventory.update_product(product, :subtract)
+          products = Inventory.list_products(socket.assigns.company_name)
+          items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
+
+          {:noreply,
+           socket
+           |> assign(items: items)
+           |> assign(total: socket.assigns.total + Decimal.to_float(product.price))
+           |> assign(products: products)
+           |> assign(item: items)
+           |> put_flash(:info, "Selected product with id: #{product_id}")}
+
+        {:error, %Ecto.Changeset{} = _changeset} ->
+          {:noreply,
+           socket
+           |> put_flash(:error, "Already added product.")}
+      end
     end
   end
 
   def handle_event("add", %{"item_id" => id} = _params, socket) do
-    item = Enum.find(socket.assigns.items, &(&1.id == String.to_integer(id)))
-    product = Enum.find(socket.assigns.products, &(&1.id == String.to_integer(id)))
+    item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, id)
+
+    product = Inventory.get_product(socket.assigns.company_name, item.product_id)
 
     cond do
       !product ->
+        Process.send_after(self(), :clear_flash, 1200)
+
         {:noreply,
          socket
          |> put_flash(:error, "product no longer exists")}
 
       product.stock == 0 ->
+        Process.send_after(self(), :clear_flash, 1200)
+
         {:noreply,
          socket
          |> put_flash(:error, "Out of stock")}
 
       true ->
-        # Add item amount
-        # Orders.add_one(company_name, invoice_id, item_id)
-        # Substract one from stock
-        # Inventory.substract_one(company_name, product_id)
+        Orders.update_item(item, :add)
+
+        Inventory.update_product(product, :subtract)
+
+        items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
+
+        products = Inventory.list_products(socket.assigns.company_name)
+
+        total = calculate_total(items, products)
+
         {:noreply,
          socket
-         |> assign(total: socket.assigns.total + Decimal.to_float(item.price))
-         |> put_flash(:info, "Add item with id: #{id}")}
+         |> assign(total: total)
+         |> assign(products: products)
+         |> assign(items: items)}
     end
   end
 
-  def handle_event("substract", %{"item_id" => id} = _params, socket) do
-    item = Enum.find(socket.assigns.items, &(&1.id == String.to_integer(id)))
+  def handle_event("subtract", %{"item_id" => id} = _params, socket) do
+    item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, id)
+
+    product = Inventory.get_product(socket.assigns.company_name, item.product_id)
 
     cond do
-      item.stock == 0 ->
+      item.quantity == 0 ->
+        Process.send_after(self(), :clear_flash, 1200)
+
         {:noreply,
          socket
          |> put_flash(:error, "Already 0")}
 
       true ->
-        # Substract item amount
-        # Orders.substract_one(company_name, invoice_id, item_id)
-        # Add one to stock
-        # Inventory.add_one(company_name, product_id)
+        Orders.update_item(item, :subtract)
+        Inventory.update_product(product, :add)
+        items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
+        products = Inventory.list_products(socket.assigns.company_name)
+        total = calculate_total(items, products)
+
         {:noreply,
          socket
-         |> assign(total: socket.assigns.total - Decimal.to_float(item.price))
-         |> put_flash(:info, "Sub item with id: #{id}")}
+         |> assign(total: total)
+         |> assign(products: products)
+         |> assign(items: items)}
     end
+  end
+
+  def handle_event("change-deleting-option", _, socket) do
+    {:noreply,
+     socket
+     |> assign(deleting: !socket.assigns.deleting)}
+  end
+
+  def handle_event("delete-item", %{"item_id" => item_id} = _params, socket) do
+    item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, item_id)
+    product = Inventory.get_product(socket.assigns.company_name, item.product_id)
+    Orders.delete_item(item)
+    Inventory.update_product(product, :add, item.quantity)
+    Process.send_after(self(), :clear_flash, 1200)
+
+    items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
+    products = Inventory.list_products(socket.assigns.company_name)
+    total = calculate_total(items, products)
+
+    {:noreply,
+     socket
+     |> assign(items: items)
+     |> assign(products: products)
+     |> assign(total: total)
+     |> put_flash(:info, "Deleted item: #{product.name}")}
+  end
+
+  def handle_info(:clear_flash, socket) do
+    {:noreply, clear_flash(socket)}
+  end
+
+  def get_product_field(assigns, product_id, field) do
+    product = Enum.find(assigns.products, &(&1.id == product_id))
+    Map.get(product, field)
+  end
+
+  defp calculate_total(items, products) do
+    items
+    |> Enum.reduce(0, fn item, acc ->
+      item.quantity * Decimal.to_float(Enum.find(products, &(&1.id == item.product_id)).price) +
+        acc
+    end)
   end
 end
