@@ -1,18 +1,62 @@
 <div class="flex space-x-40">
-  <div class="bg-white shadow rounded px-8 pt-6 pb-8 mb-4 basis-1/2">
+  <div class="bg-white shadow rounded px-8 pt-6 pb-8 mb-4 basis-1/2 relative">
     <h2 class="text-center font-semibold leading-6 text-blue-700">
       INVENTORY
     </h2>
+    <button
+      :if={@products != []}
+      phx-click="change-stock-option"
+      phx-disable-with="Changing..."
+      class={"""
+          hover:cursor-pointer phx-submit-loading:opacity-75 rounded-lg py-2
+          px-1 pt-0 pb-0 absolute top-[-15px] right-[-30px]
+          #{if !@changing_stock, do: "bg-emerald-200 hover:bg-emerald-300", else: "bg-blue-200 hover:bg-blue-300"}
+          """}
+    >
+      <span class="font-normal  text-gray-900 text-sm active:text-gray-600">
+        <%= if !@changing_stock, do: "Change inventory", else: "Set stock" %>
+      </span>
+    </button>
     <.table id="products" rows={@products}>
       <:col :let={product} label="Name"><%= product.name %></:col>
       <:col :let={product} label="Price"><%= product.price %></:col>
-      <:col :let={product} label="Stock"><%= product.stock %></:col>
+      <:col :let={product} label="Stock">
+        <span
+          phx-click={"#{if @changing_stock, do: "change-product-stock", else: ""}"}
+          phx-value-product_id={product.id}
+          class={
+            """
+            py-2 px-3 rounded
+            #{if @changing_stock, do: "focus:cursor-auto bg-emerald-50 hover:bg-emerald-200 hover:cursor-pointer", else: ""}
+            """
+          }
+        >
+          <%= product.stock %>
+        </span>
+      </:col>
+      <:col :let={product} :if={@changing_stock} label="+ or -">
+        <form :if={product.id == @product_id_to_change} class="py-0" phx-submit="update-stock">
+          <input
+            type="number"
+            name="quantity"
+            value="quantity"
+            autocomplete="off"
+            class="w-20 py-1 px-2 rounded"
+            required
+            value="0"
+          />
+        </form>
+      </:col>
     </.table>
   </div>
   <div :if={!@new_product} class="bg-white rounded px-2 pt-2 pb-8 mb-4 basis-1/4">
-    <.button phx-click="new_product" phx-disable-with="New...">
+    <button
+      class="bg-blue-200 hover:bg-blue-300 phx-submit-loading:opacity-75 rounded-lg py-3 px-2 pt-0 pb-0 text-gray-900 "
+      phx-click="new_product"
+      phx-disable-with="New..."
+    >
       New product
-    </.button>
+    </button>
   </div>
   <div :if={@new_product} class="bg-white shadow rounded px-2 pt-2 pb-8 mb-4 basis-1/4 relative">
     <.simple_form for={@form} phx-change="validate" phx-submit="add">
@@ -20,16 +64,19 @@
       <.input field={@form[:price]} type="number" label="Price" autocomplete="off" step=".01" />
       <.input field={@form[:stock]} type="number" label="Stock" autocomplete="off" />
       <:actions>
-        <.button phx-disable-with="Adding...">
+        <button
+          phx-disable-with="Adding..."
+          class="bg-blue-200 hover:bg-blue-300 phx-submit-loading:opacity-75 rounded-lg py-3 px-2 pt-0 pb-0 text-gray-900"
+        >
           Add product
-        </.button>
-        <.button
+        </button>
+        <button
           phx-click="hide"
           phx-disable-with="Hiding..."
-          class="bg-blue-100 px-1 pt-0 pb-0 text-gray-900 hover:bg-blue-200 absolute top-[5px] right-[10px]"
+          class="bg-blue-200 hover:bg-blue-300 phx-submit-loading:opacity-75 rounded-lg py-3 px-2 pt-0 pb-0 px-1 pt-0 pb-0 text-gray-900 absolute top-[5px] right-[10px]"
         >
           X
-        </.button>
+        </button>
       </:actions>
     </.simple_form>
   </div>

@@ -65,7 +65,6 @@ defmodule InvoiceManager.Inventory do
     %Product{}
     |> Product.changeset(product_params)
     |> Repo.insert()
-    |> IO.inspect(label: "CREATED PRODUCT")
   end
 
   @doc """

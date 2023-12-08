@@ -143,8 +143,8 @@ defmodule InvoiceManagerWeb.CoreComponents do
 
   def flash_group(assigns) do
     ~H"""
-    <.flash kind={:info} title="Success!" flash={@flash} />
-    <.flash kind={:error} title="Error!" flash={@flash} />
+    <.flash kind={:info} flash={@flash} />
+    <.flash kind={:error} flash={@flash} />
     <.flash
       id="disconnected"
       kind={:error}
@@ -454,13 +454,7 @@ defmodule InvoiceManagerWeb.CoreComponents do
           phx-update={match?(%Phoenix.LiveView.LiveStream{}, @rows) && "stream"}
           class="relative divide-y divide-zinc-100 border-t border-zinc-200 text-sm leading-6 text-zinc-700"
         >
-          <tr
-            :for={row <- @rows}
-            id={@row_id && @row_id.(row)}
-            phx-click="select_item"
-            phx-value-item_id={row.id}
-            class="group hover:bg-zinc-50"
-          >
+          <tr :for={row <- @rows} id={@row_id && @row_id.(row)} class="group hover:bg-zinc-50">
             <td
               :for={{col, i} <- Enum.with_index(@col)}
               phx-click={@row_click && @row_click.(row)}

@@ -51,18 +51,20 @@
         <h2 class="text-center font-semibold leading-6 text-blue-900">
           ITEMS
         </h2>
-        <.button
+        <button
+          :if={@items != []}
           phx-click="change-deleting-option"
           phx-disable-with="Changing..."
           class={"""
+          phx-submit-loading:opacity-75 rounded-lg py-2
           px-1 pt-0 pb-0 absolute top-[-15px] right-[-30px]
           #{if !@deleting, do: "bg-orange-200 hover:bg-orange-300", else: "bg-blue-200 hover:bg-blue-300"}
           """}
         >
-          <span class="font-normal  text-gray-900">
+          <span class="font-normal  text-gray-900 text-sm active:text-gray-600">
             <%= if !@deleting, do: "Remove one", else: "Stop removing" %>
           </span>
-        </.button>
+        </button>
         <table class="w-[40rem] mt-4 sm:w-full">
           <thead class="text-sm text-left leading-6 text-zinc-500">
             <tr>
@@ -161,9 +163,15 @@
   </div>
   <div class="bg-white rounded px-10 pt-2 pb-8 mb-4">
     <div :if={!@new_item}>
-      <.button phx-click="new_item" phx-disable-with="New...">
-        New item
-      </.button>
+      <button
+        class="phx-submit-loading:opacity-75 rounded-lg py-2 px-2 pt-0 pb-0 bg-blue-100 hover:bg-blue-200"
+        phx-click="new_item"
+        phx-disable-with="New..."
+      >
+        <span class="font-normal  text-gray-900 text-sm active:text-gray-600">
+          New item
+        </span>
+      </button>
     </div>
     <div :if={@new_item} class="bg-white shadow rounded px-6 pt-6 pb-8 mb-4">
       <div class="relative">
@@ -172,13 +180,13 @@
             INVENTORY
           </h2>
         </div>
-        <.button
+        <button
           phx-click="hide_inventory"
           phx-disable-with="Hiding..."
-          class="bg-blue-100 px-1 pt-0 pb-0 text-gray-900 hover:bg-blue-200 absolute top-[-10px] right-[-10px]"
+          class="bg-blue-100 phx-submit-loading:opacity-75 rounded-lg py-2 px-2 pt-0 pb-0 text-gray-900 hover:bg-blue-200 absolute top-[-10px] right-[-10px]"
         >
           X
-        </.button>
+        </button>
       </div>
 
       <.table id="products" rows={@products}>
@@ -186,7 +194,9 @@
         <:col :let={product} label="Price"><%= product.price %></:col>
         <:col :let={product} label="Stock"><%= product.stock %></:col>
         <:action :let={product}>
-          <button phx-click="select_item" phx-value-item_id={product.id}>+</button>
+          <button phx-click="select_item" phx-value-item_id={product.id} class="">
+            +
+          </button>
         </:action>
       </.table>
     </div>

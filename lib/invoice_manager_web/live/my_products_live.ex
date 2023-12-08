@@ -12,7 +12,10 @@ defmodule InvoiceManagerWeb.MyProductsLive do
         products: products,
         company_name: company_name,
         form: to_form(product_changeset),
-        new_product: false
+        new_product: false,
+        deleting: false,
+        changing_stock: false,
+        product_id_to_change: nil
       )
 
     {:ok, socket}
@@ -55,5 +58,47 @@ defmodule InvoiceManagerWeb.MyProductsLive do
     {:noreply,
      socket
      |> assign(new_product: false)}
+  end
+
+  def handle_event("change-stock-option", _, socket) do
+    {:noreply,
+     socket
+     |> assign(changing_stock: !socket.assigns.changing_stock)
+     |> assign(product_id_to_change: nil)}
+  end
+
+  def handle_event("update-stock", %{"quantity" => quantity} = _params, socket) do
+    product =
+      Inventory.get_product(socket.assigns.company_name, socket.assigns.product_id_to_change)
+
+    Process.send_after(self(), :clear_flash, 1400)
+
+    case Inventory.update_product(product, :add, String.to_integer(quantity)) do
+      {:ok, _product} ->
+        products = Inventory.list_products(socket.assigns.company_name)
+
+        {:noreply,
+         socket
+         |> assign(products: products)
+         |> assign(product_id_to_change: nil)
+         |> put_flash(:info, "changed stock in #{product.name}")}
+
+      {:error, _changeset} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Stock cannot be lower than 0")}
+    end
+  end
+
+  def handle_event("change-product-stock", %{"product_id" => product_id}, socket) do
+    Process.send_after(self(), :clear_flash, 1200)
+
+    {:noreply,
+     socket
+     |> assign(product_id_to_change: String.to_integer(product_id))}
+  end
+
+  def handle_info(:clear_flash, socket) do
+    {:noreply, clear_flash(socket)}
   end
 end

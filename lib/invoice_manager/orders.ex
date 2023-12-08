@@ -189,7 +189,6 @@ defmodule InvoiceManager.Orders do
     item
     |> Item.changeset(%{})
     |> Repo.insert()
-    |> IO.inspect(label: "CREATED ITEM now!!")
   end
 
   @doc """

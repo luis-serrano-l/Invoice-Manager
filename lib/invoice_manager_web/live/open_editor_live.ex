@@ -17,16 +17,22 @@ defmodule InvoiceManagerWeb.OpenEditorLive do
       {:ok, invoice} ->
         {:noreply,
          socket
-         |> put_flash(:info, "invoice created")
+         |> put_flash(:info, "Invoice created")
          |> redirect(
            to:
              ~p"/invoice_manager/#{socket.assigns.company_name}/editor/#{customer_name}/#{invoice.id}"
          )}
 
       {:error, message} ->
+        Process.send_after(self(), :clear_flash, 1200)
+
         {:noreply,
          socket
          |> put_flash(:error, message)}
     end
+  end
+
+  def handle_info(:clear_flash, socket) do
+    {:noreply, clear_flash(socket)}
   end
 end

@@ -18,6 +18,7 @@ defmodule InvoiceManagerWeb.EditorLive do
     products = Inventory.list_products(company_name)
     items = Orders.list_items(company_name, invoice_id)
     total = calculate_total(items, products)
+    Process.send_after(self(), :clear_flash, 1000)
 
     socket =
       assign(socket,
@@ -95,8 +96,7 @@ defmodule InvoiceManagerWeb.EditorLive do
            |> assign(items: items)
            |> assign(total: socket.assigns.total + Decimal.to_float(product.price))
            |> assign(products: products)
-           |> assign(item: items)
-           |> put_flash(:info, "Selected product with id: #{product_id}")}
+           |> assign(item: items)}
 
         {:error, %Ecto.Changeset{} = _changeset} ->
           {:noreply,
