@@ -65,7 +65,6 @@ defmodule InvoiceManager.Inventory do
     %Product{}
     |> Product.changeset(product_params)
     |> Repo.insert()
-    |> IO.inspect(label: "CREATED PRODUCT")
   end
 
   @doc """
@@ -93,11 +92,11 @@ defmodule InvoiceManager.Inventory do
     |> Repo.update()
   end
 
-  # def update_product(%Product{} = product, attrs) do
-  #  product
-  #  |> Product.changeset(attrs)
-  #  |> Repo.update()
-  # end
+  def update_product_field(%Product{} = product, attrs) do
+    product
+    |> Product.changeset(attrs)
+    |> Repo.update()
+  end
 
   @doc """
   Deletes a product.

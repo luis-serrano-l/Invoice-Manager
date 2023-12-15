@@ -10,6 +10,7 @@ defmodule InvoiceManager.Repo.Migrations.CreateInvoices do
       add :discount, :decimal
       add :total, :decimal
       add :extra_info, :string
+      add :sent, :boolean
       add :company_id, references(:companies, on_delete: :nothing)
       add :customer_id, references(:companies, on_delete: :nothing)
 

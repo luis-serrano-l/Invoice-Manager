@@ -4,6 +4,8 @@ defmodule InvoiceManager.Repo.Migrations.CreateItems do
   def change do
     create table(:items) do
       add :quantity, :integer
+      add :fixed_name, :string
+      add :fixed_price, :decimal
       add :product_id, references(:products, on_delete: :nothing)
       add :invoice_id, references(:invoices, on_delete: :nothing)
       add :company_id, references(:companies, on_delete: :nothing)

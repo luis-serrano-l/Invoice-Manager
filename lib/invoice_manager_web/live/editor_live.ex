@@ -17,18 +17,23 @@ defmodule InvoiceManagerWeb.EditorLive do
     invoice_changeset = Orders.change_invoice(%Invoice{})
     products = Inventory.list_products(company_name)
     items = Orders.list_items(company_name, invoice_id)
-    total = calculate_total(items, products)
+    value = calculate_value(items, products)
+    Process.send_after(self(), :clear_flash, 1000)
 
     socket =
       assign(socket,
         company_name: company_name,
         customer_name: customer_name,
+        operation_date: Date.utc_today(),
         invoice_id: invoice_id,
         form: to_form(invoice_changeset),
         products: products,
         items: items,
+        discount: 0.0,
+        tax_rate: 0.0,
         new_item: true,
-        total: total,
+        value: value,
+        total: value,
         deleting: false
       )
 
@@ -36,29 +41,68 @@ defmodule InvoiceManagerWeb.EditorLive do
   end
 
   def handle_event("validate", %{"invoice" => params}, socket) do
+    %{"discount" => discount} = params
+    %{"tax_rate" => tax_rate} = params
+    discount = get_number(discount)
+    tax_rate = get_number(tax_rate)
+
+    params =
+      params
+      |> Map.update!("discount", fn _ -> discount end)
+      |> Map.update!("tax_rate", fn _ -> tax_rate end)
+
     form =
       %Invoice{}
       |> Orders.change_invoice(params)
       |> Map.put(:action, :insert)
       |> to_form()
 
-    {:noreply, assign(socket, form: form)}
+    items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
+
+    products = Inventory.list_products(socket.assigns.company_name)
+
+    value = calculate_value(items, products)
+
+    total = calculate_total(value, tax_rate, discount)
+
+    {:noreply,
+     assign(socket, form: form)
+     |> assign(discount: discount)
+     |> assign(value: value)
+     |> assign(tax_rate: tax_rate)
+     |> assign(total: total)}
   end
 
-  def handle_event("save", %{"invoice" => invoice_params}, socket) do
-    invoice = Orders.get_invoice!(socket.assigns.invoice_id)
+  def handle_event("send", %{"invoice" => invoice_params}, socket) do
+    cond do
+      socket.assigns.total <= 0 ->
+        Process.send_after(self(), :clear_flash, 1200)
 
-    Process.send_after(self(), :clear_flash, 1500)
-
-    case Orders.update_invoice(invoice, invoice_params) do
-      {:ok, invoice} ->
         {:noreply,
          socket
-         |> assign(invoice: invoice)
-         |> put_flash(:info, "invoice saved")}
+         |> put_flash(:error, "Total should be higher than 0")}
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+      Map.get(invoice_params, "billing_date") < Date.to_string(Date.utc_today()) ->
+        Process.send_after(self(), :clear_flash, 1200)
+
+        {:noreply,
+         socket
+         |> put_flash(:error, "Billing date cannot be before today")}
+
+      true ->
+        invoice = Orders.get_invoice(socket.assigns.company_name, socket.assigns.invoice_id)
+
+        Orders.fix_items_price_and_name(socket.assigns.items, socket.assigns.products)
+
+        attrs =
+          invoice_params
+          |> Map.put("sent", true)
+          |> Map.put("operation_date", Date.utc_today())
+          |> Map.put("total", socket.assigns.total)
+          |> Map.put("discount", socket.assigns.discount)
+          |> Map.put("invoice_number", socket.assigns.invoice_id)
+
+        send_and_update_invoice(invoice, attrs, socket)
     end
   end
 
@@ -79,7 +123,7 @@ defmodule InvoiceManagerWeb.EditorLive do
 
     Process.send_after(self(), :clear_flash, 1200)
 
-    if product.stock == 0 do
+    if !product or product.stock == 0 do
       {:noreply,
        socket
        |> put_flash(:error, "Out of stock")}
@@ -89,14 +133,16 @@ defmodule InvoiceManagerWeb.EditorLive do
           Inventory.update_product(product, :subtract)
           products = Inventory.list_products(socket.assigns.company_name)
           items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
+          value = calculate_value(items, products)
+          total = calculate_total(value, socket.assigns.tax_rate, socket.assigns.discount)
 
           {:noreply,
            socket
            |> assign(items: items)
-           |> assign(total: socket.assigns.total + Decimal.to_float(product.price))
+           |> assign(total: total)
+           |> assign(value: value)
            |> assign(products: products)
-           |> assign(item: items)
-           |> put_flash(:info, "Selected product with id: #{product_id}")}
+           |> assign(item: items)}
 
         {:error, %Ecto.Changeset{} = _changeset} ->
           {:noreply,
@@ -135,11 +181,13 @@ defmodule InvoiceManagerWeb.EditorLive do
 
         products = Inventory.list_products(socket.assigns.company_name)
 
-        total = calculate_total(items, products)
+        value = calculate_value(items, products)
+        total = calculate_total(value, socket.assigns.tax_rate, socket.assigns.discount)
 
         {:noreply,
          socket
          |> assign(total: total)
+         |> assign(value: value)
          |> assign(products: products)
          |> assign(items: items)}
     end
@@ -163,10 +211,12 @@ defmodule InvoiceManagerWeb.EditorLive do
         Inventory.update_product(product, :add)
         items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
         products = Inventory.list_products(socket.assigns.company_name)
-        total = calculate_total(items, products)
+        value = calculate_value(items, products)
+        total = calculate_total(value, socket.assigns.tax_rate, socket.assigns.discount)
 
         {:noreply,
          socket
+         |> assign(value: value)
          |> assign(total: total)
          |> assign(products: products)
          |> assign(items: items)}
@@ -188,13 +238,15 @@ defmodule InvoiceManagerWeb.EditorLive do
 
     items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
     products = Inventory.list_products(socket.assigns.company_name)
-    total = calculate_total(items, products)
+    value = calculate_value(items, products)
+    total = calculate_total(value, socket.assigns.tax_rate, socket.assigns.discount)
 
     {:noreply,
      socket
      |> assign(items: items)
-     |> assign(products: products)
      |> assign(total: total)
+     |> assign(value: value)
+     |> assign(products: products)
      |> put_flash(:info, "Deleted item: #{product.name}")}
   end
 
@@ -202,16 +254,83 @@ defmodule InvoiceManagerWeb.EditorLive do
     {:noreply, clear_flash(socket)}
   end
 
-  def get_product_field(assigns, product_id, field) do
+  defp get_product_field(assigns, product_id, field) do
     product = Enum.find(assigns.products, &(&1.id == product_id))
     Map.get(product, field)
   end
 
-  defp calculate_total(items, products) do
+  defp send_and_update_invoice(invoice, attrs, socket) do
+    case Orders.update_invoice(invoice, attrs) do
+      {:ok, invoice} ->
+        {:noreply,
+         socket
+         |> assign(invoice: invoice)
+         |> put_flash(:info, "invoice sent")
+         |> redirect(to: ~p"/invoice_manager/#{socket.assigns.company_name}")}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, form: to_form(changeset))}
+    end
+  end
+
+  defp calculate_value([], _), do: 0
+
+  defp calculate_value(items, products) do
     items
     |> Enum.reduce(0, fn item, acc ->
       item.quantity * Decimal.to_float(Enum.find(products, &(&1.id == item.product_id)).price) +
         acc
     end)
+    |> Float.round(2)
+  end
+
+  defp calculate_tax(value, tax_rate),
+    do:
+      (value * tax_rate / 100)
+      |> Float.round(2)
+
+  defp calculate_total(value, tax_rate, discount) do
+    (value + calculate_tax(value, tax_rate) - discount)
+    |> Float.round(2)
+  end
+
+  defp get_number(number) do
+    cond do
+      Regex.match?(~r/^\d+\.\d+$/, number) ->
+        String.to_float(number)
+
+      Regex.match?(~r/^\d+$/, number) ->
+        String.to_integer(number)
+
+      true ->
+        0
+    end
+  end
+
+  defp to_eur(0), do: "0.00 €"
+
+  defp to_eur(number) when is_float(number) do
+    number = Float.to_string(number)
+
+    if Regex.match?(~r/^\d+\.\d$/, number) do
+      number <> "0 €"
+    else
+      number <> " €"
+    end
+  end
+
+  defp to_eur(number) do
+    number = Decimal.to_string(number)
+
+    cond do
+      Regex.match?(~r/^\d+\.\d$/, number) ->
+        number <> "0 €"
+
+      Regex.match?(~r/^\d+$/, number) ->
+        number <> ".00 €"
+
+      true ->
+        number <> " €"
+    end
   end
 end
