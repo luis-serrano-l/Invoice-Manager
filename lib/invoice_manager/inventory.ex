@@ -92,11 +92,11 @@ defmodule InvoiceManager.Inventory do
     |> Repo.update()
   end
 
-  # def update_product(%Product{} = product, attrs) do
-  #  product
-  #  |> Product.changeset(attrs)
-  #  |> Repo.update()
-  # end
+  def update_product_field(%Product{} = product, attrs) do
+    product
+    |> Product.changeset(attrs)
+    |> Repo.update()
+  end
 
   @doc """
   Deletes a product.

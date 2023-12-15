@@ -1,27 +1,34 @@
 <div class="flex ">
   <div class="flex space-x-8 bg-amber-50 shadow rounded px-8 pt-6 pb-8 mb-4 basis-1/3">
     <div class="bg-white shadow rounded px-6 pt-6 pb-4 mb-4 basis-1/2 flex-auto w-64">
-      <.simple_form for={@form} phx-change="validate" phx-submit="add">
+      <.simple_form for={@form} phx-change="validate" phx-submit="send">
         <p class="text-sm font-semibold leading-6 text-zinc-800">
           Invoice Number: <span class="font-normal"><%= @invoice_id %></span>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-800">
           Customer: <span class="font-normal"><%= @customer_name %></span>
         </p>
-        <.input field={@form[:billing_date]} type="date" label="Billing Date" autocomplete="off" />
         <.input
-          field={@form[:operation_date]}
+          field={@form[:billing_date]}
           type="date"
-          label="Operation Date"
+          label="Billing Date"
           autocomplete="off"
+          required
         />
+        <p class="text-sm font-semibold leading-6 text-zinc-800">
+          Operation date
+        </p>
+        <span class="font-normal">
+          <%= "#{@operation_date.month} / #{@operation_date.day} / #{@operation_date.year}" %>
+        </span>
         <div class="flex flex-wrap -mx-3 mb-6">
           <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
             <.input
               field={@form[:tax_rate]}
               type="number"
-              label="Tax Rate"
+              label="Tax Rate (%)"
               autocomplete="off"
+              min="0"
               step=".01"
             />
           </div>
@@ -29,19 +36,29 @@
             <.input
               field={@form[:discount]}
               type="number"
-              label="Discount"
+              label="Discount (€)"
               autocomplete="off"
+              min="0"
               step=".01"
             />
           </div>
         </div>
         <p class="text-sm font-semibold leading-6 text-zinc-800">
-          Total: <span class="font-normal"><%= @total %></span>
+          Subtotal: <span class="font-normal"><%= to_eur(@value) %></span>
+        </p>
+        <p class="text-sm font-semibold leading-6 text-zinc-800">
+          Taxes: <span class="font-normal"><%= to_eur(calculate_tax(@value, @tax_rate)) %></span>
+        </p>
+        <p class="text-sm font-semibold leading-6 text-zinc-800">
+          Total:
+          <span class="font-normal">
+            <%= to_eur(calculate_total(@value, @tax_rate, @discount)) %>
+          </span>
         </p>
         <.input field={@form[:extra_info]} type="textarea" label="Extra Info" autocomplete="off" />
         <:actions>
-          <.button phx-disable-with="Saving...">
-            Save
+          <.button phx-disable-with="Sending...">
+            Send
           </.button>
         </:actions>
       </.simple_form>

@@ -18,8 +18,28 @@ defmodule InvoiceManager.Orders do
       [%Invoice{}, ...]
 
   """
-  def list_invoices do
-    Repo.all(Invoice)
+  def list_invoices(company_name, "personal") do
+    invoices =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: invoice in assoc(company, :invoices),
+        where: invoice.customer_id == company.id,
+        where: invoice.sent == true,
+        select: invoice
+
+    Repo.all(invoices)
+  end
+
+  def list_invoices(company_name, "customers") do
+    invoices =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: invoice in assoc(company, :invoices),
+        where: invoice.company_id == company.id,
+        where: invoice.sent == true,
+        select: invoice
+
+    Repo.all(invoices)
   end
 
   @doc """
@@ -37,6 +57,17 @@ defmodule InvoiceManager.Orders do
 
   """
   def get_invoice!(id), do: Repo.get!(Invoice, id)
+
+  def get_invoice(company_name, invoice_id) do
+    invoice =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: invoice in assoc(company, :invoices),
+        where: invoice.id == ^invoice_id,
+        select: invoice
+
+    Repo.one(invoice)
+  end
 
   @doc """
   Creates a invoice.
@@ -57,7 +88,6 @@ defmodule InvoiceManager.Orders do
     if customer do
       Ecto.build_assoc(company, :invoices, customer_id: customer.id)
       |> Repo.insert()
-      |> IO.inspect(label: "INSERTED INVOICE NOW")
     else
       {:error, "Company does not exist"}
     end
@@ -77,7 +107,7 @@ defmodule InvoiceManager.Orders do
   """
   def update_invoice(%Invoice{} = invoice, attrs) do
     invoice
-    |> Invoice.changeset(attrs)
+    |> Invoice.changeset_to_send(attrs)
     |> Repo.update()
   end
 
@@ -214,6 +244,27 @@ defmodule InvoiceManager.Orders do
     item
     |> Item.changeset(%{"quantity" => item.quantity - 1})
     |> Repo.update()
+  end
+
+  def update_item(%Item{} = item, attrs) do
+    item
+    |> Item.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def fix_items_price_and_name(items, products) do
+    items
+    |> IO.inspect(label: "ITEMS")
+    |> Enum.map(fn item ->
+      item
+      |> update_item(get_product_name_and_price(products, item.product_id))
+    end)
+  end
+
+  defp get_product_name_and_price(products, product_id) do
+    product = Enum.find(products, &(&1.id == product_id)) |> IO.inspect(label: "PRODUCT")
+    %{name: name, price: price} = product
+    %{"fixed_name" => name, "fixed_price" => price}
   end
 
   @doc """

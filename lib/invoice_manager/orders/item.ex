@@ -8,6 +8,8 @@ defmodule InvoiceManager.Orders.Item do
 
   schema "items" do
     field :quantity, :integer, default: 1
+    field :fixed_name, :string
+    field :fixed_price, :decimal
     belongs_to :product, Product
     belongs_to :invoice, Invoice
     belongs_to :company, Company
@@ -18,7 +20,7 @@ defmodule InvoiceManager.Orders.Item do
   @doc false
   def changeset(item, attrs) do
     item
-    |> cast(attrs, [:quantity])
+    |> cast(attrs, [:quantity, :fixed_name, :fixed_price])
     |> validate_required([:quantity])
     |> unique_constraint(:invoice_id,
       name: :invoice_id_product_id_index
