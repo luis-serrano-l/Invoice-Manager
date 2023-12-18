@@ -59,6 +59,8 @@ defmodule InvoiceManager.Business do
   """
   def get_company!(id), do: Repo.get!(Company, id)
 
+  def get_company_name(id), do: get_company!(id).name
+
   @doc """
   Creates a company.
 

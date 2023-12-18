@@ -21,11 +21,17 @@ defmodule InvoiceManagerWeb.UserSessionController do
   defp create(conn, %{"user" => user_params}, info) do
     %{"email" => email, "password" => password} = user_params
 
+    Process.send_after(self(), :clear_flash, 1200)
+
     if user = Accounts.get_user_by_email_and_password(email, password) do
+      Process.send_after(self(), :clear_flash, 1200)
+
       conn
       |> put_flash(:info, info)
       |> UserAuth.log_in_user(user, user_params)
     else
+      Process.send_after(self(), :clear_flash, 1200)
+
       # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
       conn
       |> put_flash(:error, "Invalid email or password")
@@ -35,8 +41,14 @@ defmodule InvoiceManagerWeb.UserSessionController do
   end
 
   def delete(conn, _params) do
+    Process.send_after(self(), :clear_flash, 1200)
+
     conn
     |> put_flash(:info, "Logged out successfully.")
     |> UserAuth.log_out_user()
+  end
+
+  def handle_info(:clear_flash, socket) do
+    {:noreply, clear_flash(socket)}
   end
 end

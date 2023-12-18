@@ -17,7 +17,6 @@ defmodule InvoiceManagerWeb.OpenEditorLive do
       {:ok, invoice} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Invoice created")
          |> redirect(
            to:
              ~p"/invoice_manager/#{socket.assigns.company_name}/editor/#{customer_name}/#{invoice.id}"
