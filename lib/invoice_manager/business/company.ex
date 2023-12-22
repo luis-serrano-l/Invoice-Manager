@@ -2,7 +2,7 @@ defmodule InvoiceManager.Business.Company do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias InvoiceManager.Business.UserAndCompany
+  alias InvoiceManager.Accounts.User
   alias InvoiceManager.Orders.Invoice
   alias InvoiceManager.Inventory.Product
 
@@ -12,7 +12,7 @@ defmodule InvoiceManager.Business.Company do
     field :contact_phone, :string
     field :fiscal_number, :string
     field :name, :string
-    has_many :users_and_companies, UserAndCompany
+    has_many :users, User
     has_many :products, Product
     has_many :invoices, Invoice
     has_many :items, through: [:invoices, :items]

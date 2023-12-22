@@ -68,29 +68,38 @@
   </div>
 
   <div class="flex-grow mx-auto max-w-sm">
-    <.table id="invoice" rows={@invoices}>
-      <:col :let={invoice} label="Number">
-        <span
-          phx-click="open-invoice"
-          phx-value-invoice_id={invoice.id}
-          class={"""
-          py-2 px-3 rounded
-          focus:cursor-auto bg-teal-50 hover:bg-teal-200 hover:cursor-pointer
-          """}
-        >
-          <%= invoice.invoice_number %>
-        </span>
-      </:col>
-      <:col :let={invoice} :if={@role == "customers"} label="Customer">
-        <%= get_company_name(invoice.customer_id) %>
-      </:col>
-      <:col :let={invoice} :if={@role == "personal"} label="Company">
-        <%= get_company_name(invoice.company_id) %>
-      </:col>
-      <:col :let={invoice} label="Total"><%= to_eur(invoice.total) %></:col>
-      <:col :let={invoice} label="Billing Date">
-        <%= "#{invoice.billing_date.month} / #{invoice.billing_date.day} / #{invoice.billing_date.year}" %>
-      </:col>
-    </.table>
+    <.simple_form for={@form} phx-change="validate" phx-submit="save">
+      <.input
+        field={@form[:address]}
+        type="text"
+        label="Address"
+        value={@company.address}
+        required
+      />
+      <.input
+        field={@form[:contact_email]}
+        type="text"
+        label="Contact Email"
+        value={@company.contact_email}
+        required
+      />
+      <.input
+        field={@form[:contact_phone]}
+        type="text"
+        label="Contact Phone"
+        value={@company.contact_phone}
+        required
+      />
+      <.input
+        field={@form[:fiscal_number]}
+        type="text"
+        label="Fiscal Number"
+        value={@company.fiscal_number}
+        required
+      />
+      <:actions>
+        <.button id="submit" phx-disable-with="Saving...">Save</.button>
+      </:actions>
+    </.simple_form>
   </div>
 </div>

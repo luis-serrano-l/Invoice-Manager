@@ -1,13 +1,17 @@
 defmodule InvoiceManagerWeb.ViewInvoiceLive do
+  alias InvoiceManager.Accounts
   alias InvoiceManager.Business
   alias InvoiceManager.Orders
   use InvoiceManagerWeb, :live_view
 
   def mount(
-        %{"company_name" => company_name, "role" => _role, "invoice_id" => invoice_id},
-        _session,
+        %{"company_name" => _company_name, "role" => _role, "invoice_id" => invoice_id},
+        session,
         socket
       ) do
+    user = Accounts.get_user_by_session_token(session["user_token"])
+    company = Business.get_company!(user.company_id)
+    company_name = company.name
     invoice_id = String.to_integer(invoice_id)
     invoice = Orders.get_invoice(company_name, invoice_id)
     items = Orders.list_items(company_name, invoice_id)
@@ -19,7 +23,9 @@ defmodule InvoiceManagerWeb.ViewInvoiceLive do
         invoice: invoice,
         items: items,
         value: value,
-        tax: tax
+        tax: tax,
+        company_name: company_name,
+        user_is_admin: user.is_admin
       )
 
     {:ok, socket}

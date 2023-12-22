@@ -29,8 +29,13 @@ defmodule InvoiceManagerWeb.RegisterCompanyLive do
   def handle_event("save", %{"company" => company_params}, socket) do
     case Business.create_company(company_params) do
       {:ok, company} ->
-        Business.create_admin_and_company(socket.assigns.user_id, company)
         Process.send_after(self(), :clear_flash, 1200)
+
+        Accounts.update_user(Accounts.get_user!(socket.assigns.user_id), %{
+          "company_id" => company.id,
+          "is_admin" => true
+        })
+        |> IO.inspect(label: "UPDATED USER")
 
         {:noreply,
          socket

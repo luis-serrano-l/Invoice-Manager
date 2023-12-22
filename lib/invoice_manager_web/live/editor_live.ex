@@ -1,4 +1,6 @@
 defmodule InvoiceManagerWeb.EditorLive do
+  alias InvoiceManager.Business
+  alias InvoiceManager.Accounts
   alias InvoiceManager.Inventory
   use InvoiceManagerWeb, :live_view
   alias InvoiceManager.Orders.Invoice
@@ -6,13 +8,16 @@ defmodule InvoiceManagerWeb.EditorLive do
 
   def mount(
         %{
-          "company_name" => company_name,
+          "company_name" => _company_name,
           "customer_name" => customer_name,
           "invoice_id" => invoice_id
         },
-        _session,
+        session,
         socket
       ) do
+    user = Accounts.get_user_by_session_token(session["user_token"])
+    company = Business.get_company!(user.company_id)
+    company_name = company.name
     invoice_id = String.to_integer(invoice_id)
     invoice_changeset = Orders.change_invoice(%Invoice{})
     products = Inventory.list_products(company_name)
@@ -26,6 +31,7 @@ defmodule InvoiceManagerWeb.EditorLive do
         customer_name: customer_name,
         operation_date: Date.utc_today(),
         invoice_id: invoice_id,
+        user_is_admin: user.is_admin,
         form: to_form(invoice_changeset),
         products: products,
         items: items,
@@ -247,6 +253,7 @@ defmodule InvoiceManagerWeb.EditorLive do
      |> assign(total: total)
      |> assign(value: value)
      |> assign(products: products)
+     |> assign(deleting: false)
      |> put_flash(:info, "Deleted item: #{product.name}")}
   end
 

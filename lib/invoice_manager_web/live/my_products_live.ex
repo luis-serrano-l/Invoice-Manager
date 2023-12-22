@@ -1,9 +1,13 @@
 defmodule InvoiceManagerWeb.MyProductsLive do
+  alias InvoiceManager.Business
+  alias InvoiceManager.Accounts
   alias InvoiceManager.Inventory.Product
   alias InvoiceManager.Inventory
   use InvoiceManagerWeb, :live_view
 
-  def mount(%{"company_name" => company_name}, _session, socket) do
+  def mount(%{"company_name" => _company_name}, session, socket) do
+    user = Accounts.get_user_by_session_token(session["user_token"])
+    company_name = Business.get_company!(user.company_id).name
     products = Inventory.list_products(company_name)
     product_changeset = Inventory.change_product(%Product{})
 
@@ -16,7 +20,8 @@ defmodule InvoiceManagerWeb.MyProductsLive do
         deleting: false,
         changing_inventory: false,
         product_id_to_change: nil,
-        product_field_to_change: ""
+        product_field_to_change: "",
+        user_is_admin: user.is_admin
       )
 
     {:ok, socket}

@@ -42,6 +42,17 @@ defmodule InvoiceManager.Orders do
     Repo.all(invoices)
   end
 
+  def list_unsent_invoices(company_name) do
+    invoice =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: invoice in assoc(company, :invoices),
+        where: invoice.sent == false,
+        select: invoice
+
+    Repo.all(invoice)
+  end
+
   @doc """
   Gets a single invoice.
 
@@ -108,6 +119,12 @@ defmodule InvoiceManager.Orders do
   def update_invoice(%Invoice{} = invoice, attrs) do
     invoice
     |> Invoice.changeset_to_send(attrs)
+    |> Repo.update()
+  end
+
+  def temporary_update_invoice(%Invoice{} = invoice, attrs) do
+    invoice
+    |> Invoice.changeset(attrs)
     |> Repo.update()
   end
 

@@ -34,9 +34,6 @@ defmodule InvoiceManager.Orders.Invoice do
       :extra_info,
       :sent
     ])
-    |> validate_number(:tax_rate, greater_than: -0.1)
-    |> validate_number(:discount, greater_than: -1)
-    |> validate_number(:total, greater_than: 0)
   end
 
   def changeset_to_send(invoice, attrs) do
@@ -57,8 +54,8 @@ defmodule InvoiceManager.Orders.Invoice do
       :tax_rate,
       :sent
     ])
-    |> validate_number(:tax_rate, greater_than: -0.1)
-    |> validate_number(:discount, greater_than: -0.001)
+    |> validate_number(:tax_rate, greater_than: -0.01)
+    |> validate_number(:discount, greater_than: -0.01)
     |> validate_number(:total, greater_than: 0)
   end
 
