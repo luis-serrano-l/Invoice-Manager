@@ -21,8 +21,6 @@ defmodule InvoiceManagerWeb.UserSessionController do
   defp create(conn, %{"user" => user_params}, info) do
     %{"email" => email, "password" => password} = user_params
 
-    Process.send_after(self(), :clear_flash, 1200)
-
     if user = Accounts.get_user_by_email_and_password(email, password) do
       Process.send_after(self(), :clear_flash, 1200)
 
@@ -41,10 +39,7 @@ defmodule InvoiceManagerWeb.UserSessionController do
   end
 
   def delete(conn, _params) do
-    Process.send_after(self(), :clear_flash, 1200)
-
     conn
-    |> put_flash(:info, "Logged out successfully.")
     |> UserAuth.log_out_user()
   end
 

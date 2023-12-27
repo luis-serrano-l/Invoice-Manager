@@ -72,6 +72,8 @@ defmodule InvoiceManagerWeb.Router do
       live "/invoice_manager/:company_name/editor/:customer_name/:invoice_id", EditorLive
       live "/invoice_manager/:company_name/open_editor", OpenEditorLive
       live "/invoice_manager/:company_name/my_products", MyProductsLive
+      live "/invoice_manager/:company_name/new_member", NewMemberLive
+      live "/invoice_manager/:company_name/company_settings", CompanySettingsLive
       live "/invoice_manager", GetCompanyLive
       live "/invoice_manager/company_name/registration", RegisterCompanyLive
       live "/users/settings", UserSettingsLive, :edit

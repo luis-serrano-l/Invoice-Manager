@@ -42,6 +42,17 @@ defmodule InvoiceManager.Orders do
     Repo.all(invoices)
   end
 
+  def list_unsent_invoices(company_name) do
+    invoice =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: invoice in assoc(company, :invoices),
+        where: invoice.sent == false,
+        select: invoice
+
+    Repo.all(invoice)
+  end
+
   @doc """
   Gets a single invoice.
 
@@ -111,6 +122,12 @@ defmodule InvoiceManager.Orders do
     |> Repo.update()
   end
 
+  def temporary_update_invoice(%Invoice{} = invoice, attrs) do
+    invoice
+    |> Invoice.changeset(attrs)
+    |> Repo.update()
+  end
+
   @doc """
   Deletes a invoice.
 
@@ -124,6 +141,8 @@ defmodule InvoiceManager.Orders do
 
   """
   def delete_invoice(%Invoice{} = invoice) do
+    from(item in "items", where: item.invoice_id == ^invoice.id)
+    |> Repo.delete_all()
     Repo.delete(invoice)
   end
 
@@ -234,17 +253,6 @@ defmodule InvoiceManager.Orders do
 
   """
 
-  def update_item(item, :add) do
-    item
-    |> Item.changeset(%{"quantity" => item.quantity + 1})
-    |> Repo.update()
-  end
-
-  def update_item(item, :subtract) do
-    item
-    |> Item.changeset(%{"quantity" => item.quantity - 1})
-    |> Repo.update()
-  end
 
   def update_item(%Item{} = item, attrs) do
     item

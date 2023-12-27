@@ -4,68 +4,10 @@ defmodule InvoiceManager.AccountsTest do
   alias InvoiceManager.Accounts
 
   describe "users_and_companies" do
-    alias InvoiceManager.Business.UserAndCompany
 
     import InvoiceManager.AccountsFixtures
 
     @invalid_attrs %{admin: nil}
-
-    test "list_users_and_companies/0 returns all users_and_companies" do
-      user_and_company = user_and_company_fixture()
-      assert Accounts.list_users_and_companies() == [user_and_company]
-    end
-
-    test "get_user_and_company!/1 returns the user_and_company with given id" do
-      user_and_company = user_and_company_fixture()
-      assert Accounts.get_user_and_company!(user_and_company.id) == user_and_company
-    end
-
-    test "create_user_and_company/1 with valid data creates a user_and_company" do
-      valid_attrs = %{admin: true}
-
-      assert {:ok, %UserAndCompany{} = user_and_company} =
-               Accounts.create_user_and_company(valid_attrs)
-
-      assert user_and_company.admin == true
-    end
-
-    test "create_user_and_company/1 with invalid data returns error changeset" do
-      assert {:error, %Ecto.Changeset{}} = Accounts.create_user_and_company(@invalid_attrs)
-    end
-
-    test "update_user_and_company/2 with valid data updates the user_and_company" do
-      user_and_company = user_and_company_fixture()
-      update_attrs = %{admin: false}
-
-      assert {:ok, %UserAndCompany{} = user_and_company} =
-               Accounts.update_user_and_company(user_and_company, update_attrs)
-
-      assert user_and_company.admin == false
-    end
-
-    test "update_user_and_company/2 with invalid data returns error changeset" do
-      user_and_company = user_and_company_fixture()
-
-      assert {:error, %Ecto.Changeset{}} =
-               Accounts.update_user_and_company(user_and_company, @invalid_attrs)
-
-      assert user_and_company == Accounts.get_user_and_company!(user_and_company.id)
-    end
-
-    test "delete_user_and_company/1 deletes the user_and_company" do
-      user_and_company = user_and_company_fixture()
-      assert {:ok, %UserAndCompany{}} = Accounts.delete_user_and_company(user_and_company)
-
-      assert_raise Ecto.NoResultsError, fn ->
-        Accounts.get_user_and_company!(user_and_company.id)
-      end
-    end
-
-    test "change_user_and_company/1 returns a user_and_company changeset" do
-      user_and_company = user_and_company_fixture()
-      assert %Ecto.Changeset{} = Accounts.change_user_and_company(user_and_company)
-    end
-  end
 
   import InvoiceManager.AccountsFixtures
   alias InvoiceManager.Accounts.{User, UserToken}

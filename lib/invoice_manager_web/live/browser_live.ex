@@ -1,16 +1,21 @@
 defmodule InvoiceManagerWeb.BrowserLive do
+  alias InvoiceManager.Accounts
   alias InvoiceManager.Business
   alias InvoiceManager.Orders
   use InvoiceManagerWeb, :live_view
 
-  def mount(%{"company_name" => company_name, "role" => role}, _session, socket) do
+  def mount(%{"company_name" => _company_name, "role" => role}, session, socket) do
+    user = Accounts.get_user_by_session_token(session["user_token"])
+    company = Business.get_company!(user.company_id)
+    company_name = company.name
     invoices = Orders.list_invoices(company_name, role)
 
     socket =
       assign(socket,
         invoices: invoices,
         role: role,
-        company_name: company_name
+        company_name: company_name,
+        user_is_admin: user.is_admin
       )
 
     {:ok, socket}

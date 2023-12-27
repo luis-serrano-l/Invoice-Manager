@@ -68,56 +68,38 @@
   </div>
 
   <div class="flex-grow mx-auto max-w-sm">
-    <div>
-      <.simple_form for={@form} phx-submit="create" class="relative">
-        <.input
-          field={@form[:name]}
-          type="text"
-          placeholder="Insert customer for new invoice"
-          autocomplete="off"
-          class="w-min"
-        />
-        <:actions>
-          <.button
-            phx-disable-with="Creating..."
-            class="absolute top-[-0px] left-[-80px] py-0 px-1 bg-teal-700 hover:bg-teal-600"
-          >
-            Create
-          </.button>
-        </:actions>
-      </.simple_form>
-    </div>
-    <div class="bg-white shadow rounded px-4 pt-6 pb-4 mb-4 flex-auto">
-    <div :if={@invoices != []} class="mx-auto max-w-sm relative">
-   
-      
-      <.table id="invoice" rows={@invoices}>
-        <:col :let={invoice} label="Number">
-          <span
-            phx-click="open-invoice"
-            phx-value-invoice_id={invoice.id}
-            phx-value-customer_id={invoice.customer_id}
-            class="py-2 px-3 rounded focus:cursor-auto bg-teal-50 hover:bg-teal-200 hover:cursor-pointer"
-          >
-            <%= invoice.id %>
-          </span>
-        </:col>
-        <:col :let={invoice} label="Customer">
-          <%= get_company_name(invoice.customer_id) %>
-        </:col>
-        <:col :let={invoice} >
-          <button
-            phx-click="delete-invoice"
-            phx-value-invoice_id={invoice.id}
-            phx-value-customer_id={invoice.customer_id}
-            data-confirm="Are you sure you want to delete this invoice?"
-            class="py-2 px-2 rounded focus:cursor-auto bg-red-50 hover:bg-red-200 hover:cursor-pointer"
-          >
-            x
-          </button>
-        </:col>
-      </.table>
-      </div>
-    </div>
+    <.simple_form for={@form} phx-change="validate" phx-submit="save">
+      <.input
+        field={@form[:address]}
+        type="text"
+        label="Address"
+        value={@company.address}
+        required
+      />
+      <.input
+        field={@form[:contact_email]}
+        type="text"
+        label="Contact Email"
+        value={@company.contact_email}
+        required
+      />
+      <.input
+        field={@form[:contact_phone]}
+        type="text"
+        label="Contact Phone"
+        value={@company.contact_phone}
+        required
+      />
+      <.input
+        field={@form[:fiscal_number]}
+        type="text"
+        label="Fiscal Number"
+        value={@company.fiscal_number}
+        required
+      />
+      <:actions>
+        <.button id="submit" phx-disable-with="Saving...">Save</.button>
+      </:actions>
+    </.simple_form>
   </div>
 </div>

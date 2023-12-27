@@ -2,14 +2,17 @@ defmodule InvoiceManager.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias InvoiceManager.Business.UserAndCompany
+  alias InvoiceManager.Business.Company
 
   schema "users" do
     field :email, :string
     field :password, :string, virtual: true, redact: true
+    field :name, :string
+    field :last_name, :string
+    field :is_admin, :boolean, default: false
     field :hashed_password, :string, redact: true
     field :confirmed_at, :naive_datetime
-    has_many :users_and_companies, UserAndCompany
+    belongs_to :company, Company
 
     timestamps()
   end
@@ -39,9 +42,15 @@ defmodule InvoiceManager.Accounts.User do
   """
   def registration_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:email, :password])
+    |> cast(attrs, [:email, :password, :name, :last_name, :is_admin])
     |> validate_email(opts)
     |> validate_password(opts)
+  end
+
+  def access_company_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:company_id, :is_admin])
+    |> validate_required([:company_id])
   end
 
   defp validate_email(changeset, opts) do

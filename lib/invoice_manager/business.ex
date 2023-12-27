@@ -4,7 +4,6 @@ defmodule InvoiceManager.Business do
   """
 
   import Ecto.Query, warn: false
-  alias InvoiceManager.Accounts.User
   alias InvoiceManager.Repo
 
   alias InvoiceManager.Business.Company
@@ -22,27 +21,6 @@ defmodule InvoiceManager.Business do
     Repo.all(Company)
   end
 
-  def list_company_ids_by_user_id(user_id) do
-    company_ids =
-      from user in User,
-        where: user.id == ^user_id,
-        join: user_and_company in assoc(user, :users_and_companies),
-        select: user_and_company.company_id
-
-    Repo.all(company_ids)
-  end
-
-  def list_company_names_by_ids([]), do: nil
-
-  def list_company_names_by_ids(company_ids) do
-    company_names =
-      from company in Company,
-        where: company.id in ^company_ids,
-        select: company.name
-
-    Repo.all(company_names)
-  end
-
   @doc """
   Gets a single company.
 
@@ -58,6 +36,10 @@ defmodule InvoiceManager.Business do
 
   """
   def get_company!(id), do: Repo.get!(Company, id)
+
+  def get_company_by_name(company_name) do
+    Repo.get_by(Company, name: company_name)
+  end
 
   def get_company_name(id), do: get_company!(id).name
 
@@ -124,108 +106,5 @@ defmodule InvoiceManager.Business do
   """
   def change_company(%Company{} = company, attrs \\ %{}) do
     Company.changeset(company, attrs)
-  end
-
-  alias InvoiceManager.Business.UserAndCompany
-
-  @doc """
-  Returns the list of users_and_companies.
-
-  ## Examples
-
-      iex> list_users_and_companies()
-      [%UserAndCompany{}, ...]
-
-  """
-  def list_users_and_companies do
-    Repo.all(UserAndCompany)
-  end
-
-  @doc """
-  Gets a single user_and_company.
-
-  Raises `Ecto.NoResultsError` if the User and company does not exist.
-
-  ## Examples
-
-      iex> get_user_and_company!(123)
-      %UserAndCompany{}
-
-      iex> get_user_and_company!(456)
-      ** (Ecto.NoResultsError)
-
-  """
-  def get_user_and_company!(id), do: Repo.get!(UserAndCompany, id)
-
-  @doc """
-  Creates a user_and_company.
-
-  ## Examples
-
-      iex> create_user_and_company(%{field: value})
-      {:ok, %UserAndCompany{}}
-
-      iex> create_user_and_company(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def create_user_and_company(attrs \\ %{}) do
-    %UserAndCompany{}
-    |> UserAndCompany.changeset(attrs)
-    |> Repo.insert()
-  end
-
-  def create_admin_and_company(user_id, company) do
-    new_user_and_company =
-      Ecto.build_assoc(company, :users_and_companies, admin: true, user_id: user_id)
-
-    Repo.insert(new_user_and_company)
-  end
-
-  @doc """
-  Updates a user_and_company.
-
-  ## Examples
-
-      iex> update_user_and_company(user_and_company, %{field: new_value})
-      {:ok, %UserAndCompany{}}
-
-      iex> update_user_and_company(user_and_company, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def update_user_and_company(%UserAndCompany{} = user_and_company, attrs) do
-    user_and_company
-    |> UserAndCompany.changeset(attrs)
-    |> Repo.update()
-  end
-
-  @doc """
-  Deletes a user_and_company.
-
-  ## Examples
-
-      iex> delete_user_and_company(user_and_company)
-      {:ok, %UserAndCompany{}}
-
-      iex> delete_user_and_company(user_and_company)
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def delete_user_and_company(%UserAndCompany{} = user_and_company) do
-    Repo.delete(user_and_company)
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking user_and_company changes.
-
-  ## Examples
-
-      iex> change_user_and_company(user_and_company)
-      %Ecto.Changeset{data: %UserAndCompany{}}
-
-  """
-  def change_user_and_company(%UserAndCompany{} = user_and_company, attrs \\ %{}) do
-    UserAndCompany.changeset(user_and_company, attrs)
   end
 end

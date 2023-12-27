@@ -215,6 +215,12 @@ defmodule InvoiceManager.Accounts do
     end
   end
 
+  def update_user(user, attrs) do
+    user
+    |> User.access_company_changeset(attrs)
+    |> Repo.update()
+  end
+
   ## Session
 
   @doc """

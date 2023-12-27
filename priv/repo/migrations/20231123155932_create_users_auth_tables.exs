@@ -6,8 +6,12 @@ defmodule InvoiceManager.Repo.Migrations.CreateUsersAuthTables do
 
     create table(:users) do
       add :email, :citext, null: false
+      add :name, :string
+      add :last_name, :string
+      add :is_admin, :boolean
       add :hashed_password, :string, null: false
       add :confirmed_at, :naive_datetime
+      add :company_id, references(:companies, on_delete: :nothing)
       timestamps()
     end
 

@@ -205,7 +205,7 @@ defmodule InvoiceManagerWeb.UserAuth do
     if conn.assigns[:current_user] do
       conn
     else
-      Process.send_after(self(), :clear_flash, 1200)
+      Process.send_after(self(), :clear_flash, 900)
 
       conn
       |> put_flash(:error, "You must log in to access this page.")

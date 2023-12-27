@@ -1,24 +1,96 @@
-<.table id="invoice" rows={@invoices}>
-  <:col :let={invoice} label="Number">
-    <span
-      phx-click="open-invoice"
-      phx-value-invoice_id={invoice.id}
-      class={"""
-      py-2 px-3 rounded
-      focus:cursor-auto bg-teal-50 hover:bg-teal-200 hover:cursor-pointer
-      """}
-    >
-      <%= invoice.invoice_number %>
-    </span>
-  </:col>
-  <:col :let={invoice} :if={@role == "customers"} label="Customer">
-    <%= get_company_name(invoice.customer_id) %>
-  </:col>
-  <:col :let={invoice} :if={@role == "personal"} label="Company">
-    <%= get_company_name(invoice.company_id) %>
-  </:col>
-  <:col :let={invoice} label="Total"><%= to_eur(invoice.total) %></:col>
-  <:col :let={invoice} label="Billing Date">
-    <%= "#{invoice.billing_date.month} / #{invoice.billing_date.day} / #{invoice.billing_date.year}" %>
-  </:col>
-</.table>
+<div class="flex">
+  <div class="w-[250px] drop-shadow rounded absolute top-[15px] left-[30px]">
+    <details class="bg-gray-300 open:bg-amber-200 duration-300">
+      <summary class="bg-inherit px-5 py-3 font-semibold cursor-pointer">My invoices</summary>
+      <div class="bg-white px-5 py-2 border border-gray-300 text-sm font-light">
+        <ul class="">
+          <li class="">
+            <.link
+              href={~p"/invoice_manager/#{@company_name}/browser/personal"}
+              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
+            >
+              Personal Invoices
+            </.link>
+          </li>
+          <li class="mt-1">
+            <.link
+              href={~p"/invoice_manager/#{@company_name}/browser/customers"}
+              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
+            >
+              Customer Invoices
+            </.link>
+          </li>
+        </ul>
+      </div>
+    </details>
+    <details class="bg-gray-300 open:bg-amber-200 duration-300">
+      <summary class="bg-inherit px-5 font-semibold cursor-pointer">Editor</summary>
+      <div class="bg-white px-5 py-2 border border-gray-300 text-sm font-light">
+        <.link
+          href={~p"/invoice_manager/#{@company_name}/open_editor"}
+          class="font-semibold leading-6 text-blue-900 hover:text-blue-700"
+        >
+          Select Invoice
+        </.link>
+      </div>
+    </details>
+    <details class="bg-gray-300 open:bg-amber-200 duration-300">
+      <summary class="bg-inherit px-5 py-3 font-semibold cursor-pointer">My company</summary>
+      <div class="bg-white px-5 py-2 border border-gray-300 text-sm font-light">
+        <ul class="">
+          <li class="">
+            <.link
+              href={~p"/invoice_manager/#{@company_name}/my_products"}
+              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
+            >
+              Inventory
+            </.link>
+          </li>
+          <li :if={@user_is_admin} class="mt-1">
+            <.link
+              href={~p"/invoice_manager/#{@company_name}/company_settings"}
+              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
+            >
+              Settings
+            </.link>
+          </li>
+          <li :if={@user_is_admin} class="mt-1">
+            <.link
+              href={~p"/invoice_manager/#{@company_name}/new_member"}
+              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
+            >
+              New member
+            </.link>
+          </li>
+        </ul>
+      </div>
+    </details>
+  </div>
+
+  <div class="flex-grow mx-auto max-w-sm">
+    <.table id="invoice" rows={@invoices}>
+      <:col :let={invoice} label="Number">
+        <span
+          phx-click="open-invoice"
+          phx-value-invoice_id={invoice.id}
+          class={"""
+          py-2 px-3 rounded
+          focus:cursor-auto bg-teal-50 hover:bg-teal-200 hover:cursor-pointer
+          """}
+        >
+          <%= invoice.invoice_number %>
+        </span>
+      </:col>
+      <:col :let={invoice} :if={@role == "customers"} label="Customer">
+        <%= get_company_name(invoice.customer_id) %>
+      </:col>
+      <:col :let={invoice} :if={@role == "personal"} label="Company">
+        <%= get_company_name(invoice.company_id) %>
+      </:col>
+      <:col :let={invoice} label="Total"><%= to_eur(invoice.total) %></:col>
+      <:col :let={invoice} label="Billing Date">
+        <%= "#{invoice.billing_date.month} / #{invoice.billing_date.day} / #{invoice.billing_date.year}" %>
+      </:col>
+    </.table>
+  </div>
+</div>
