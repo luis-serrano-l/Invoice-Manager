@@ -141,6 +141,8 @@ defmodule InvoiceManager.Orders do
 
   """
   def delete_invoice(%Invoice{} = invoice) do
+    from(item in "items", where: item.invoice_id == ^invoice.id)
+    |> Repo.delete_all()
     Repo.delete(invoice)
   end
 
@@ -251,17 +253,6 @@ defmodule InvoiceManager.Orders do
 
   """
 
-  def update_item(item, :add) do
-    item
-    |> Item.changeset(%{"quantity" => item.quantity + 1})
-    |> Repo.update()
-  end
-
-  def update_item(item, :subtract) do
-    item
-    |> Item.changeset(%{"quantity" => item.quantity - 1})
-    |> Repo.update()
-  end
 
   def update_item(%Item{} = item, attrs) do
     item

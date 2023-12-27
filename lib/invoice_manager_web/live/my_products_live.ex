@@ -78,7 +78,7 @@ defmodule InvoiceManagerWeb.MyProductsLive do
 
     Process.send_after(self(), :clear_flash, 1400)
 
-    case Inventory.update_product_field(product, %{
+    case Inventory.update_product(product, %{
            socket.assigns.product_field_to_change => product_input
          }) do
       {:ok, _product} ->

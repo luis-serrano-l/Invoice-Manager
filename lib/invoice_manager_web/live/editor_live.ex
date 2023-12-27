@@ -40,7 +40,8 @@ defmodule InvoiceManagerWeb.EditorLive do
         new_item: true,
         value: value,
         total: value,
-        deleting: false
+        deleting: false,
+        item_id_to_change: nil
       )
 
     {:ok, socket}
@@ -136,7 +137,7 @@ defmodule InvoiceManagerWeb.EditorLive do
     else
       case Orders.create_item(product.id, socket.assigns.company_name, socket.assigns.invoice_id) do
         {:ok, _item} ->
-          Inventory.update_product(product, :subtract)
+          Inventory.update_product(product, %{"stock" => product.stock - 1})
           products = Inventory.list_products(socket.assigns.company_name)
           items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
           value = calculate_value(items, products)
@@ -158,11 +159,14 @@ defmodule InvoiceManagerWeb.EditorLive do
     end
   end
 
-  def handle_event("add", %{"item_id" => id} = _params, socket) do
-    item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, id)
+  def handle_event("change-quantity", %{"new_quantity" => new_quantity}, socket) do
+    item_id = socket.assigns.item_id_to_change
+    new_quantity = String.to_integer(new_quantity)
+    item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, item_id)
 
     product = Inventory.get_product(socket.assigns.company_name, item.product_id)
 
+    stock_diff = new_quantity - item.quantity
     cond do
       !product ->
         Process.send_after(self(), :clear_flash, 1200)
@@ -171,17 +175,16 @@ defmodule InvoiceManagerWeb.EditorLive do
          socket
          |> put_flash(:error, "product no longer exists")}
 
-      product.stock == 0 ->
+      product.stock < stock_diff ->
         Process.send_after(self(), :clear_flash, 1200)
 
         {:noreply,
          socket
-         |> put_flash(:error, "Out of stock")}
-
+         |> put_flash(:error, "Not enough stock")}
       true ->
-        Orders.update_item(item, :add)
+        Orders.update_item(item, %{"quantity" => new_quantity})
 
-        Inventory.update_product(product, :subtract)
+        Inventory.update_product(product, %{"stock" => product.stock - stock_diff})
 
         items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
 
@@ -195,38 +198,21 @@ defmodule InvoiceManagerWeb.EditorLive do
          |> assign(total: total)
          |> assign(value: value)
          |> assign(products: products)
-         |> assign(items: items)}
-    end
+         |> assign(items: items)
+        |> assign(item_id_to_change: nil)}
+      end
   end
 
-  def handle_event("subtract", %{"item_id" => id} = _params, socket) do
-    item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, id)
+  def handle_event("change-item-quantity", %{"item_id" => item_id}, socket) do
+    {:noreply,
+     socket
+     |> assign(item_id_to_change: String.to_integer(item_id))}
+  end
 
-    product = Inventory.get_product(socket.assigns.company_name, item.product_id)
-
-    cond do
-      item.quantity == 0 ->
-        Process.send_after(self(), :clear_flash, 1200)
-
-        {:noreply,
-         socket
-         |> put_flash(:error, "Already 0")}
-
-      true ->
-        Orders.update_item(item, :subtract)
-        Inventory.update_product(product, :add)
-        items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
-        products = Inventory.list_products(socket.assigns.company_name)
-        value = calculate_value(items, products)
-        total = calculate_total(value, socket.assigns.tax_rate, socket.assigns.discount)
-
-        {:noreply,
-         socket
-         |> assign(value: value)
-         |> assign(total: total)
-         |> assign(products: products)
-         |> assign(items: items)}
-    end
+  def handle_event("cancel-input", _, socket) do
+    {:noreply,
+     socket
+     |> assign(item_id_to_change: nil)}
   end
 
   def handle_event("change-deleting-option", _, socket) do
@@ -239,7 +225,7 @@ defmodule InvoiceManagerWeb.EditorLive do
     item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, item_id)
     product = Inventory.get_product(socket.assigns.company_name, item.product_id)
     Orders.delete_item(item)
-    Inventory.update_product(product, :add, item.quantity)
+    Inventory.update_product(product, %{"stock" => product.stock + item.quantity})
     Process.send_after(self(), :clear_flash, 1200)
 
     items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)

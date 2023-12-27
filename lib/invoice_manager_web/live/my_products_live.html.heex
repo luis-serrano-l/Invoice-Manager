@@ -141,10 +141,10 @@
             """
           }
           >
-            <%= "x " <> "#{product.stock}" %>
+            <%= "x #{product.stock}" %>
           </span>
         </:col>
-        <:col :let={product} :if={@product_id_to_change} label="new value">
+        <:col :let={product} :if={@product_id_to_change} label="New value">
           <form :if={product.id == @product_id_to_change} class="py-0" phx-submit="update-product">
             <input
               :if={@product_field_to_change == "name"}
