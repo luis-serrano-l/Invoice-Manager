@@ -8,7 +8,7 @@ defmodule InvoiceManager.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"InvoiceManager", "contact@example.com"})
+      |> from({"InvoiceManager", "luis.serrano.l@programmer.net"})
       |> subject(subject)
       |> text_body(body)
 

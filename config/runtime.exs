@@ -63,6 +63,11 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  config :invoice_manager, InvoiceManager.Mailer,
+    adapter: Swoosh.Adapters.Mailjet,
+    api_key: System.get_env("MAILJET_API_KEY"),
+    secret: System.get_env("MAILJET_SECRET_KEY")
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key
