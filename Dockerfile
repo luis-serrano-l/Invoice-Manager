@@ -6,20 +6,9 @@ RUN apt-get update && apt-get install -y nodejs
 RUN mix local.hex --force && \
     mix local.rebar --force 
 
-RUN mkdir /app
-
-COPY . /app/
-
 WORKDIR /app
 
-RUN mix deps.get
+RUN find . -type d -exec chmod 755 {} \;
+RUN find . -type f -exec chmod 644 {} \;
 
-RUN mix assets.deploy
-
-RUN mix compile
-
-RUN mix phx.digest
-
-COPY entrypoint.sh /app/entrypoint.sh
-
-RUN chmod +x /app/entrypoint.sh
+EXPOSE 4000

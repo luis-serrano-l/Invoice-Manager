@@ -1,3 +1,6 @@
+mix deps.get
+mix assets.deploy
+mix compile
+mix phx.digest
 mix ecto.setup
-
-exec iex -S mix phx.server
+mix phx.server

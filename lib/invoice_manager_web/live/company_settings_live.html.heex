@@ -1,102 +1,12 @@
 <div class="flex">
-  <div class="w-[250px] drop-shadow rounded absolute top-[15px] left-[30px]">
-    <details class="bg-gray-300 open:bg-amber-200 duration-300">
-      <summary class="bg-inherit px-5 py-3 font-semibold cursor-pointer">My invoices</summary>
-      <div class="bg-white px-5 py-2 border border-gray-300 text-sm font-light">
-        <ul class="">
-          <li class="">
-            <.link
-              href={~p"/invoice_manager/#{@company_name}/browser/personal"}
-              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
-            >
-              Personal Invoices
-            </.link>
-          </li>
-          <li class="mt-1">
-            <.link
-              href={~p"/invoice_manager/#{@company_name}/browser/customers"}
-              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
-            >
-              Customer Invoices
-            </.link>
-          </li>
-        </ul>
-      </div>
-    </details>
-    <details class="bg-gray-300 open:bg-amber-200 duration-300">
-      <summary class="bg-inherit px-5 font-semibold cursor-pointer">Editor</summary>
-      <div class="bg-white px-5 py-2 border border-gray-300 text-sm font-light">
-        <.link
-          href={~p"/invoice_manager/#{@company_name}/open_editor"}
-          class="font-semibold leading-6 text-blue-900 hover:text-blue-700"
-        >
-          Select Invoice
-        </.link>
-      </div>
-    </details>
-    <details class="bg-gray-300 open:bg-amber-200 duration-300">
-      <summary class="bg-inherit px-5 py-3 font-semibold cursor-pointer">My company</summary>
-      <div class="bg-white px-5 py-2 border border-gray-300 text-sm font-light">
-        <ul class="">
-          <li class="">
-            <.link
-              href={~p"/invoice_manager/#{@company_name}/my_products"}
-              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
-            >
-              Inventory
-            </.link>
-          </li>
-          <li :if={@user_is_admin} class="mt-1">
-            <.link
-              href={~p"/invoice_manager/#{@company_name}/company_settings"}
-              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
-            >
-              Settings
-            </.link>
-          </li>
-          <li :if={@user_is_admin} class="mt-1">
-            <.link
-              href={~p"/invoice_manager/#{@company_name}/new_member"}
-              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
-            >
-              New member
-            </.link>
-          </li>
-        </ul>
-      </div>
-    </details>
-  </div>
-
+  <.invoice_navigation company_name={@company_name} user_is_admin={@user_is_admin}>
+  </.invoice_navigation>
   <div class="flex-grow mx-auto max-w-sm">
     <.simple_form for={@form} phx-change="validate" phx-submit="save">
-      <.input
-        field={@form[:address]}
-        type="text"
-        label="Address"
-        value={@company.address}
-        required
-      />
-      <.input
-        field={@form[:contact_email]}
-        type="text"
-        label="Contact Email"
-        value={@company.contact_email}
-        required
-      />
-      <.input
-        field={@form[:contact_phone]}
-        type="text"
-        label="Contact Phone"
-        value={@company.contact_phone}
-        required
-      />
-      <.input
-        field={@form[:fiscal_number]}
-        type="text"
-        label="Fiscal Number"
-        value={@company.fiscal_number}
-        required
-      />
+      <.input field={@form[:address]} type="text" label="Address" required />
+      <.input field={@form[:contact_email]} type="text" label="Contact Email" required />
+      <.input field={@form[:contact_phone]} type="text" label="Contact Phone" required />
+      <.input field={@form[:fiscal_number]} type="text" label="Fiscal Number" required />
       <:actions>
         <.button id="submit" phx-disable-with="Saving...">Save</.button>
       </:actions>

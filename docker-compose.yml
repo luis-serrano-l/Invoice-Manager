@@ -2,15 +2,20 @@ version: "3.8"
 services:
   webapp:
     build: .
+    restart: always
     env_file:
       - ".env"
-    command: sh -c "/app/entrypoint.sh"
     ports:
       - "4000:4000"
     depends_on:
       - postgres
     links:
       - postgres
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+    command: sh -c "/app/entrypoint.sh"
   postgres:
     image: postgres:15.3
     restart: always

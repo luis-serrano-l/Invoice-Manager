@@ -7,7 +7,7 @@ defmodule InvoiceManagerWeb.CompanySettingsLive do
   def mount(%{"company_name" => _company_name}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
     company = Business.get_company!(user.company_id)
-    company_changeset = Business.change_company(%Company{})
+    company_changeset = Business.change_company(company)
 
     {:ok,
      socket

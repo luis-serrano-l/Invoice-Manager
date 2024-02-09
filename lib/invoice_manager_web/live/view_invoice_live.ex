@@ -33,6 +33,16 @@ defmodule InvoiceManagerWeb.ViewInvoiceLive do
 
   defp get_company_name(company_id), do: Business.get_company_name(company_id)
 
+  defp get_company_address(company_id), do: Business.get_company!(company_id).address
+
+  defp get_company_fiscal_number(company_id), do: Business.get_company!(company_id).fiscal_number
+
+  defp get_company_contact_email(company_id),
+    do: Business.get_company!(company_id).contact_email
+
+  defp get_company_contact_phone(company_id),
+    do: Business.get_company!(company_id).contact_phone
+
   defp calculate_value(items) do
     items
     |> Enum.reduce(0, fn item, acc ->

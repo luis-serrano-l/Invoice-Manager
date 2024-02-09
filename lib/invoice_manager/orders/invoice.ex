@@ -52,7 +52,7 @@ defmodule InvoiceManager.Orders.Invoice do
       :invoice_number,
       :billing_date,
       :tax_rate,
-      :sent
+      :total
     ])
     |> validate_number(:tax_rate, greater_than: -0.01)
     |> validate_number(:discount, greater_than: -0.01)

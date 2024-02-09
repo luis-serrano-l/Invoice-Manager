@@ -86,6 +86,9 @@ defmodule InvoiceManager.Inventory do
     |> Repo.update()
   end
 
+  def update_products_stock(items) do
+  end
+
   @doc """
   Deletes a product.
 

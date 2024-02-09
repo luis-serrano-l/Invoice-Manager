@@ -1,75 +1,10 @@
 <div class="flex">
-  <div class="w-[200px] drop-shadow rounded absolute top-[30px] left-[40px]">
-    <details class="bg-gray-300 open:bg-amber-200 duration-300">
-      <summary class="bg-inherit px-5 py-3 font-semibold cursor-pointer">My invoices</summary>
-      <div class="bg-white px-5 py-2 border border-gray-300 text-sm font-light">
-        <ul class="">
-          <li class="">
-            <.link
-              href={~p"/invoice_manager/#{@company_name}/browser/personal"}
-              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
-            >
-              Personal Invoices
-            </.link>
-          </li>
-          <li class="mt-1">
-            <.link
-              href={~p"/invoice_manager/#{@company_name}/browser/customers"}
-              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
-            >
-              Customer Invoices
-            </.link>
-          </li>
-        </ul>
-      </div>
-    </details>
-    <details class="bg-gray-300 open:bg-amber-200 duration-300">
-      <summary class="bg-inherit px-5 font-semibold cursor-pointer">Editor</summary>
-      <div class="bg-white px-5 py-2 border border-gray-300 text-sm font-light">
-        <.link
-          href={~p"/invoice_manager/#{@company_name}/open_editor"}
-          class="font-semibold leading-6 text-blue-900 hover:text-blue-700"
-        >
-          Select Invoice
-        </.link>
-      </div>
-    </details>
-    <details class="bg-gray-300 open:bg-amber-200 duration-300">
-      <summary class="bg-inherit px-5 py-3 font-semibold cursor-pointer">My company</summary>
-      <div class="bg-white px-5 py-2 border border-gray-300 text-sm font-light">
-        <ul class="">
-          <li class="">
-            <.link
-              href={~p"/invoice_manager/#{@company_name}/my_products"}
-              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
-            >
-              Inventory
-            </.link>
-          </li>
-          <li :if={@user_is_admin} class="mt-1">
-            <.link
-              href={~p"/invoice_manager/#{@company_name}/company_settings"}
-              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
-            >
-              Settings
-            </.link>
-          </li>
-          <li :if={@user_is_admin} class="mt-1">
-            <.link
-              href={~p"/invoice_manager/#{@company_name}/new_member"}
-              class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
-            >
-              New member
-            </.link>
-          </li>
-        </ul>
-      </div>
-    </details>
-  </div>
+  <.invoice_navigation company_name={@company_name} user_is_admin={@user_is_admin}>
+  </.invoice_navigation>
 
   <div class="flex space-x-6 bg-amber-50 shadow rounded px-6 pt-6 pb-8 mb-4 basis-1/3">
     <div class="bg-white shadow rounded px-4 pt-6 pb-4 mb-4 basis-1/2 flex-auto w-64">
-      <.simple_form for={@form} phx-change="validate" phx-submit="send">
+      <.simple_form for={@form} phx-change="validate" phx-submit="save">
         <p class="text-sm font-semibold leading-6 text-zinc-800">
           Invoice Number: <span class="font-normal"><%= @invoice_id %></span>
         </p>
@@ -114,18 +49,28 @@
           Subtotal: <span class="font-normal"><%= to_eur(@value) %></span>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-800">
-          Taxes: <span class="font-normal"><%= to_eur(calculate_tax(@value, @tax_rate)) %></span>
+          Taxes: <span class="font-normal"><%= to_eur(@taxes) %></span>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-800">
           Total:
           <span class="font-normal">
-            <%= to_eur(calculate_total(@value, @tax_rate, @discount)) %>
+            <%= to_eur(@total) %>
           </span>
         </p>
         <.input field={@form[:extra_info]} type="textarea" label="Extra Info" autocomplete="off" />
         <:actions>
-          <.button phx-disable-with="Sending...">
+          <button
+            class={[
+              "phx-submit-loading:opacity-75 rounded-lg bg-blue-900 hover:bg-blue-700 py-2 px-3",
+              "text-sm font-semibold leading-6 text-white active:text-white/80"
+            ]}
+            phx-disable-with="Sending..."
+            phx-click="send"
+          >
             Send
+          </button>
+          <.button phx-disable-with="Saving...">
+            Save
           </.button>
         </:actions>
       </.simple_form>
@@ -141,13 +86,14 @@
               <th class="p-0 pr-6 pb-4 font-normal">Name</th>
               <th class="p-0 pr-6 pb-4 font-normal">Price</th>
               <th class="p-0 pr-6 pb-4 font-normal">Quantity</th>
-              <th class="p-0 pr-6 pb-4 font-normal" :if={@item_id_to_change}><span
-              
-            phx-click="cancel-input"
-            class="py-2 px-2 rounded focus:cursor-auto bg-blue-50 hover:bg-blue-200 hover:cursor-pointer"
-          >
-            Cancel
-          </span></th>
+              <th :if={@product_id_to_change} class="p-0 pr-6 pb-4 font-normal">
+                <span
+                  phx-click="cancel-input"
+                  class="py-2 px-2 rounded focus:cursor-auto bg-blue-50 hover:bg-blue-200 hover:cursor-pointer"
+                >
+                  Cancel
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody
@@ -157,12 +103,7 @@
             <div :for={item <- @items}>
               <tr>
                 <td class="relative p-0 ">
-                  <div
-                    class="block py-4 px-3"
-                    phx-click={"#{if @deleting, do: "delete-item", else: ""}"}
-                    phx-value-item_id={item.id}
-                    data-confirm={"#{if @deleting, do: "Are you sure you want to remove this item?", else: ""}"}
-                  >
+                  <div class="block py-4 px-3">
                     <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl">
                     </span>
                     <span class="relative font-semibold text-zinc-900">
@@ -184,38 +125,47 @@
                     <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl">
                     </span>
                     <span
-            phx-click="change-item-quantity"
-            phx-value-item_id={item.id}
-            class={
+                      phx-click="change-item-quantity"
+                      phx-value-product_id={item.product_id}
+                      class={
             """
             py-2 px-3 rounded mr-6
-            #{if item.id == @item_id_to_change, do: "bg-emerald-400", else: ""}
+            #{if item.product_id == @product_id_to_change, do: "bg-emerald-400", else: ""}
             relative font-semibold focus:cursor-auto bg-emerald-50 hover:bg-emerald-200 hover:cursor-pointer
             """
             }
-            >
-                    <%= "x #{item.quantity}" %>
+                    >
+                      <%= "x #{item.quantity}" %>
                     </span>
                   </div>
                 </td>
-          <td>
-          <form :if={item.id == @item_id_to_change} class="py-0" phx-submit="change-quantity">
-          <input
-              type="number"
-              name="new_quantity"
-              value={item.quantity}
-              autocomplete="off"
-              class="w-20 py-1 px-2 rounded"
-              required
-              value="0"
-              min="0"
-            />
-          </form>
-          </td>
-                <td :if={!@item_id_to_change} class="py-0">
-                <button  phx-click="delete-item" phx-value-item_id={item.id} 
-                data-confirm="Are you sure you want to delete this item?"
-            class="py-1 px-2 rounded focus:cursor-auto bg-red-50 hover:bg-red-200 hover:cursor-pointer">x</button>
+                <td>
+                  <form
+                    :if={item.product_id == @product_id_to_change}
+                    class="py-0"
+                    phx-submit="change-quantity"
+                  >
+                    <input
+                      type="number"
+                      name="new_quantity"
+                      value={item.quantity}
+                      autocomplete="off"
+                      class="w-20 py-1 px-2 rounded"
+                      required
+                      value="0"
+                      min="1"
+                    />
+                  </form>
+                </td>
+                <td :if={!@product_id_to_change} class="py-0">
+                  <button
+                    phx-click="delete-item"
+                    phx-value-product_id={item.product_id}
+                    data-confirm="Are you sure you want to delete this item?"
+                    class="py-1 px-2 rounded focus:cursor-auto bg-red-50 hover:bg-red-200 hover:cursor-pointer"
+                  >
+                    x
+                  </button>
                 </td>
               </tr>
             </div>
@@ -257,7 +207,11 @@
         <:col :let={product} label="Price"><%= product.price %></:col>
         <:col :let={product} label="Stock"><%= product.stock %></:col>
         <:action :let={product}>
-          <button phx-click="select_item" phx-value-item_id={product.id} class="py-1 px-2 rounded focus:cursor-auto bg-blue-50 hover:bg-blue-200 hover:cursor-pointer">
+          <button
+            phx-click="select_item"
+            phx-value-product_id={product.id}
+            class="py-1 px-2 rounded focus:cursor-auto bg-blue-50 hover:bg-blue-200 hover:cursor-pointer"
+          >
             +
           </button>
         </:action>

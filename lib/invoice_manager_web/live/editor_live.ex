@@ -19,10 +19,15 @@ defmodule InvoiceManagerWeb.EditorLive do
     company = Business.get_company!(user.company_id)
     company_name = company.name
     invoice_id = String.to_integer(invoice_id)
-    invoice_changeset = Orders.change_invoice(%Invoice{})
+    invoice = Orders.get_invoice!(invoice_id)
+    invoice_changeset = Orders.change_invoice(invoice)
     products = Inventory.list_products(company_name)
     items = Orders.list_items(company_name, invoice_id)
+    tax_rate = Decimal.to_float(invoice.tax_rate)
+    discount = Decimal.to_float(invoice.discount)
     value = calculate_value(items, products)
+    taxes = calculate_tax(value, tax_rate)
+    total = calculate_total(value, taxes, discount)
     Process.send_after(self(), :clear_flash, 1000)
 
     socket =
@@ -35,13 +40,14 @@ defmodule InvoiceManagerWeb.EditorLive do
         form: to_form(invoice_changeset),
         products: products,
         items: items,
-        discount: 0.0,
-        tax_rate: 0.0,
         new_item: true,
+        tax_rate: tax_rate,
+        taxes: taxes,
+        discount: discount,
         value: value,
-        total: value,
-        deleting: false,
-        item_id_to_change: nil
+        total: total,
+        product_id_to_change: nil,
+        is_saved: false
       )
 
     {:ok, socket}
@@ -64,52 +70,77 @@ defmodule InvoiceManagerWeb.EditorLive do
       |> Map.put(:action, :insert)
       |> to_form()
 
-    items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
+    items = socket.assigns.items
 
     products = Inventory.list_products(socket.assigns.company_name)
 
     value = calculate_value(items, products)
-
-    total = calculate_total(value, tax_rate, discount)
+    taxes = calculate_tax(value, tax_rate)
+    total = calculate_total(value, taxes, discount)
 
     {:noreply,
      assign(socket, form: form)
      |> assign(discount: discount)
      |> assign(value: value)
+     |> assign(taxes: taxes)
      |> assign(tax_rate: tax_rate)
-     |> assign(total: total)}
+     |> assign(total: total)
+     |> assign(is_saved: false)}
   end
 
-  def handle_event("send", %{"invoice" => invoice_params}, socket) do
+  def handle_event("send", _, socket) do
+    Process.send_after(self(), :clear_flash, 1200)
+
+    if !socket.assigns.is_saved do
+      {:noreply,
+       socket
+       |> put_flash(:error, "Cannot send before saving")}
+    else
+      invoice = Orders.get_invoice(socket.assigns.company_name, socket.assigns.invoice_id)
+      {:ok, invoice} = Orders.update_invoice(invoice, %{"sent" => true})
+
+      {:noreply,
+       socket
+       |> assign(invoice: invoice)
+       |> put_flash(:info, "invoice sent")
+       |> redirect(to: ~p"/invoice_manager/#{socket.assigns.company_name}")}
+    end
+  end
+
+  def handle_event("save", %{"invoice" => invoice_params}, socket) do
     cond do
       socket.assigns.total <= 0 ->
         Process.send_after(self(), :clear_flash, 1200)
 
         {:noreply,
          socket
-         |> put_flash(:error, "Total should be higher than 0")}
+         |> put_flash(:error, "Total should be higher than 0")
+         |> assign(is_saved: false)}
 
-      Map.get(invoice_params, "billing_date") < Date.to_string(Date.utc_today()) ->
+      is_before?(invoice_params) ->
         Process.send_after(self(), :clear_flash, 1200)
 
         {:noreply,
          socket
-         |> put_flash(:error, "Billing date cannot be before today")}
+         |> put_flash(:error, "Billing date cannot be before today")
+         |> assign(is_saved: false)}
 
       true ->
-        invoice = Orders.get_invoice(socket.assigns.company_name, socket.assigns.invoice_id)
-
-        Orders.fix_items_price_and_name(socket.assigns.items, socket.assigns.products)
+        Orders.update_items_and_products(
+          socket.assigns.company_name,
+          socket.assigns.invoice_id,
+          socket.assigns.items
+        )
 
         attrs =
           invoice_params
-          |> Map.put("sent", true)
           |> Map.put("operation_date", Date.utc_today())
           |> Map.put("total", socket.assigns.total)
-          |> Map.put("discount", socket.assigns.discount)
           |> Map.put("invoice_number", socket.assigns.invoice_id)
 
-        send_and_update_invoice(invoice, attrs, socket)
+        invoice = Orders.get_invoice(socket.assigns.company_name, socket.assigns.invoice_id)
+
+        update_invoice(invoice, attrs, socket)
     end
   end
 
@@ -125,122 +156,160 @@ defmodule InvoiceManagerWeb.EditorLive do
      |> assign(new_item: false)}
   end
 
-  def handle_event("select_item", %{"item_id" => product_id} = _params, socket) do
+  def handle_event("select_item", %{"product_id" => product_id} = _params, socket) do
+    product_id = String.to_integer(product_id)
+
     product = Inventory.get_product!(product_id)
+
+    items = socket.assigns.items
 
     Process.send_after(self(), :clear_flash, 1200)
 
-    if !product or product.stock == 0 do
-      {:noreply,
-       socket
-       |> put_flash(:error, "Out of stock")}
-    else
-      case Orders.create_item(product.id, socket.assigns.company_name, socket.assigns.invoice_id) do
-        {:ok, _item} ->
-          Inventory.update_product(product, %{"stock" => product.stock - 1})
-          products = Inventory.list_products(socket.assigns.company_name)
-          items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
-          value = calculate_value(items, products)
-          total = calculate_total(value, socket.assigns.tax_rate, socket.assigns.discount)
+    cond do
+      !product or product.stock == 0 ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Out of stock")}
 
-          {:noreply,
-           socket
-           |> assign(items: items)
-           |> assign(total: total)
-           |> assign(value: value)
-           |> assign(products: products)
-           |> assign(item: items)}
+      product_id in Enum.map(items, & &1.product_id) ->
+        items =
+          Enum.map(items, fn item ->
+            if item.product_id == product_id,
+              do: Map.update!(item, :quantity, &(&1 + 1)),
+              else: item
+          end)
 
-        {:error, %Ecto.Changeset{} = _changeset} ->
-          {:noreply,
-           socket
-           |> put_flash(:error, "Already added product.")}
-      end
+        value = calculate_value(socket.assigns.items, socket.assigns.products)
+        taxes = calculate_tax(value, socket.assigns.tax_rate)
+        total = calculate_total(value, taxes, socket.assigns.discount)
+
+        {:noreply,
+         socket
+         |> assign(items: items)
+         |> assign(total: total)
+         |> assign(taxes: taxes)
+         |> assign(value: value)}
+
+      true ->
+        item = %{product_id: product_id, quantity: 1}
+        items = [item | items]
+
+        value = calculate_value(socket.assigns.items, socket.assigns.products)
+        taxes = calculate_tax(value, socket.assigns.tax_rate)
+        total = calculate_total(value, socket.assigns.taxes, socket.assigns.discount)
+
+        {:noreply,
+         socket
+         |> assign(items: items)
+         |> assign(total: total)
+         |> assign(taxes: taxes)
+         |> assign(value: value)
+         |> assign(is_saved: false)}
     end
   end
 
   def handle_event("change-quantity", %{"new_quantity" => new_quantity}, socket) do
-    item_id = socket.assigns.item_id_to_change
+    product_id = socket.assigns.product_id_to_change
+    product = Inventory.get_product(socket.assigns.company_name, product_id)
+    items = socket.assigns.items
+    quantity = Enum.find(items, &(&1.product_id == product_id)).quantity
     new_quantity = String.to_integer(new_quantity)
-    item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, item_id)
+    stock_diff = new_quantity - quantity
 
-    product = Inventory.get_product(socket.assigns.company_name, item.product_id)
+    Process.send_after(self(), :clear_flash, 1200)
 
-    stock_diff = new_quantity - item.quantity
     cond do
-      !product ->
-        Process.send_after(self(), :clear_flash, 1200)
+      quantity <= 0 ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "quantity must be above 0")}
 
+      !product ->
         {:noreply,
          socket
          |> put_flash(:error, "product no longer exists")}
 
       product.stock < stock_diff ->
-        Process.send_after(self(), :clear_flash, 1200)
-
         {:noreply,
          socket
          |> put_flash(:error, "Not enough stock")}
+
       true ->
-        Orders.update_item(item, %{"quantity" => new_quantity})
+        items =
+          Enum.map(items, fn item ->
+            if item.product_id == product_id,
+              do: Map.put(item, :quantity, new_quantity),
+              else: item
+          end)
 
-        Inventory.update_product(product, %{"stock" => product.stock - stock_diff})
-
-        items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
-
-        products = Inventory.list_products(socket.assigns.company_name)
-
-        value = calculate_value(items, products)
-        total = calculate_total(value, socket.assigns.tax_rate, socket.assigns.discount)
+        value = calculate_value(items, socket.assigns.products)
+        total = calculate_total(value, socket.assigns.taxes, socket.assigns.discount)
+        taxes = calculate_tax(value, socket.assigns.tax_rate)
 
         {:noreply,
          socket
          |> assign(total: total)
          |> assign(value: value)
-         |> assign(products: products)
          |> assign(items: items)
-        |> assign(item_id_to_change: nil)}
-      end
+         |> assign(taxes: taxes)
+         |> assign(product_id_to_change: nil)
+         |> assign(is_saved: false)}
+    end
   end
 
-  def handle_event("change-item-quantity", %{"item_id" => item_id}, socket) do
+  def handle_event("change-item-quantity", %{"product_id" => product_id}, socket) do
     {:noreply,
      socket
-     |> assign(item_id_to_change: String.to_integer(item_id))}
+     |> assign(product_id_to_change: String.to_integer(product_id))}
   end
 
   def handle_event("cancel-input", _, socket) do
     {:noreply,
      socket
-     |> assign(item_id_to_change: nil)}
+     |> assign(product_id_to_change: nil)}
   end
 
-  def handle_event("change-deleting-option", _, socket) do
-    {:noreply,
-     socket
-     |> assign(deleting: !socket.assigns.deleting)}
-  end
-
-  def handle_event("delete-item", %{"item_id" => item_id} = _params, socket) do
-    item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, item_id)
-    product = Inventory.get_product(socket.assigns.company_name, item.product_id)
-    Orders.delete_item(item)
-    Inventory.update_product(product, %{"stock" => product.stock + item.quantity})
+  def handle_event("delete-item", %{"product_id" => product_id} = _params, socket) do
+    product_id = String.to_integer(product_id)
+    items = socket.assigns.items
+    item = Enum.find(items, &(&1.product_id == product_id))
     Process.send_after(self(), :clear_flash, 1200)
 
-    items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
-    products = Inventory.list_products(socket.assigns.company_name)
-    value = calculate_value(items, products)
-    total = calculate_total(value, socket.assigns.tax_rate, socket.assigns.discount)
+    case Map.get(item, :id) do
+      nil ->
+        items = List.delete(items, item)
+        value = calculate_value(items, socket.assigns.products)
+        total = calculate_total(value, socket.assigns.taxes, socket.assigns.discount)
 
-    {:noreply,
-     socket
-     |> assign(items: items)
-     |> assign(total: total)
-     |> assign(value: value)
-     |> assign(products: products)
-     |> assign(deleting: false)
-     |> put_flash(:info, "Deleted item: #{product.name}")}
+        {:noreply,
+         socket
+         |> assign(items: items)
+         |> assign(total: total)
+         |> assign(value: value)
+         |> assign(is_saved: false)
+         |> put_flash(:info, "Deleted item")}
+
+      id ->
+        saved_item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, id)
+        product = Inventory.get_product(socket.assigns.company_name, product_id)
+        Orders.delete_item(saved_item)
+        Inventory.update_product(product, %{"stock" => product.stock + saved_item.quantity})
+
+        products = Inventory.list_products(socket.assigns.company_name)
+        items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
+
+        value = calculate_value(items, products)
+        total = calculate_total(value, socket.assigns.taxes, socket.assigns.discount)
+
+        {:noreply,
+         socket
+         |> assign(items: items)
+         |> assign(total: total)
+         |> assign(value: value)
+         |> assign(products: products)
+         |> assign(is_saved: false)
+         |> put_flash(:info, "Deleted item: #{product.name}")}
+    end
   end
 
   def handle_info(:clear_flash, socket) do
@@ -252,14 +321,20 @@ defmodule InvoiceManagerWeb.EditorLive do
     Map.get(product, field)
   end
 
-  defp send_and_update_invoice(invoice, attrs, socket) do
+  defp update_invoice(invoice, attrs, socket) do
     case Orders.update_invoice(invoice, attrs) do
-      {:ok, invoice} ->
+      {:ok, _invoice} ->
+        Process.send_after(self(), :clear_flash, 1000)
+
+        products = Inventory.list_products(socket.assigns.company_name)
+        items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
+
         {:noreply,
          socket
-         |> assign(invoice: invoice)
-         |> put_flash(:info, "invoice sent")
-         |> redirect(to: ~p"/invoice_manager/#{socket.assigns.company_name}")}
+         |> assign(products: products)
+         |> assign(items: items)
+         |> assign(is_saved: true)
+         |> put_flash(:info, "Saved successfully")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
@@ -282,8 +357,8 @@ defmodule InvoiceManagerWeb.EditorLive do
       (value * tax_rate / 100)
       |> Float.round(2)
 
-  defp calculate_total(value, tax_rate, discount) do
-    (value + calculate_tax(value, tax_rate) - discount)
+  defp calculate_total(value, taxes, discount) do
+    (value + taxes - discount)
     |> Float.round(2)
   end
 
@@ -325,5 +400,9 @@ defmodule InvoiceManagerWeb.EditorLive do
       true ->
         number <> " €"
     end
+  end
+
+  defp is_before?(invoice_params) do
+    Map.get(invoice_params, "billing_date") < Date.to_string(Date.utc_today())
   end
 end

@@ -4,6 +4,7 @@ defmodule InvoiceManager.Orders do
   """
 
   import Ecto.Query, warn: false
+  alias InvoiceManager.Inventory
   alias InvoiceManager.Business.Company
   alias InvoiceManager.Repo
 
@@ -25,6 +26,7 @@ defmodule InvoiceManager.Orders do
         join: invoice in assoc(company, :invoices),
         where: invoice.customer_id == company.id,
         where: invoice.sent == true,
+        order_by: invoice.updated_at,
         select: invoice
 
     Repo.all(invoices)
@@ -37,6 +39,7 @@ defmodule InvoiceManager.Orders do
         join: invoice in assoc(company, :invoices),
         where: invoice.company_id == company.id,
         where: invoice.sent == true,
+        order_by: invoice.updated_at,
         select: invoice
 
     Repo.all(invoices)
@@ -143,6 +146,7 @@ defmodule InvoiceManager.Orders do
   def delete_invoice(%Invoice{} = invoice) do
     from(item in "items", where: item.invoice_id == ^invoice.id)
     |> Repo.delete_all()
+
     Repo.delete(invoice)
   end
 
@@ -224,7 +228,7 @@ defmodule InvoiceManager.Orders do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_item(product_id, company_name, invoice_id) do
+  def create_item(product_id, company_name, invoice_id, attrs \\ %{}) do
     invoice =
       from company in Company,
         where: company.name == ^company_name,
@@ -236,7 +240,7 @@ defmodule InvoiceManager.Orders do
     item = Ecto.build_assoc(invoice, :items, product_id: product_id)
 
     item
-    |> Item.changeset(%{})
+    |> Item.changeset(attrs)
     |> Repo.insert()
   end
 
@@ -253,16 +257,54 @@ defmodule InvoiceManager.Orders do
 
   """
 
-
   def update_item(%Item{} = item, attrs) do
     item
     |> Item.changeset(attrs)
     |> Repo.update()
   end
 
+  def update_items_and_products(company_name, invoice_id, items) do
+    Enum.map(items, fn item ->
+      product = Inventory.get_product(company_name, item.product_id)
+
+      case Map.get(item, :id) do
+        nil ->
+          # We will create the items that where not saved (dont have an id)
+          create_item(
+            item.product_id,
+            company_name,
+            invoice_id,
+            %{
+              "fixed_name" => product.name,
+              "fixed_price" => product.price,
+              "quantity" => item.quantity
+            }
+          )
+
+          # Once the item is saved, we remove the corresponding stock
+          Inventory.update_product(product, %{
+            "stock" => product.stock - item.quantity
+          })
+
+        id ->
+          saved_item = get_item(company_name, invoice_id, id)
+          quantity_diff = item.quantity - saved_item.quantity
+
+          update_item(saved_item, %{
+            "fixed_name" => product.name,
+            "fixed_price" => product.price,
+            "quantity" => item.quantity
+          })
+
+          Inventory.update_product(product, %{
+            "stock" => product.stock - quantity_diff
+          })
+      end
+    end)
+  end
+
   def fix_items_price_and_name(items, products) do
     items
-    |> IO.inspect(label: "ITEMS")
     |> Enum.map(fn item ->
       item
       |> update_item(get_product_name_and_price(products, item.product_id))
@@ -270,7 +312,7 @@ defmodule InvoiceManager.Orders do
   end
 
   defp get_product_name_and_price(products, product_id) do
-    product = Enum.find(products, &(&1.id == product_id)) |> IO.inspect(label: "PRODUCT")
+    product = Enum.find(products, &(&1.id == product_id))
     %{name: name, price: price} = product
     %{"fixed_name" => name, "fixed_price" => price}
   end

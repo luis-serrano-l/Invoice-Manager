@@ -17,7 +17,6 @@ defmodule InvoiceManagerWeb.MyProductsLive do
         company_name: company_name,
         form: to_form(product_changeset),
         new_product: false,
-        deleting: false,
         changing_inventory: false,
         product_id_to_change: nil,
         product_field_to_change: "",
