@@ -6,7 +6,8 @@ defmodule InvoiceManagerWeb.RegisterCompanyLive do
 
   def mount(_params, session, socket) do
     user_id = Accounts.get_user_by_session_token(session["user_token"]).id
-    company_changeset = Business.change_company(%Company{})
+    contact_email = Accounts.get_user!(user_id).email
+    company_changeset = Business.change_company(%Company{}, %{"contact_email" => contact_email})
 
     socket =
       socket

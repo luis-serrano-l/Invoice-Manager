@@ -6,6 +6,8 @@ defmodule InvoiceManagerWeb.EditorLive do
   alias InvoiceManager.Orders.Invoice
   alias InvoiceManager.Orders
 
+  @size 12
+
   def mount(
         %{
           "company_name" => _company_name,
@@ -21,11 +23,12 @@ defmodule InvoiceManagerWeb.EditorLive do
     invoice_id = String.to_integer(invoice_id)
     invoice = Orders.get_invoice!(invoice_id)
     invoice_changeset = Orders.change_invoice(invoice)
-    products = Inventory.list_products(company_name)
+    products = Inventory.list_products(company_name, @size, 0)
+    pages = (Inventory.length_products(company_name) / @size) |> ceil()
     items = Orders.list_items(company_name, invoice_id)
     tax_rate = Decimal.to_float(invoice.tax_rate)
     discount = Decimal.to_float(invoice.discount)
-    value = calculate_value(items, products)
+    value = calculate_value(items)
     taxes = calculate_tax(value, tax_rate)
     total = calculate_total(value, taxes, discount)
     Process.send_after(self(), :clear_flash, 1000)
@@ -47,10 +50,53 @@ defmodule InvoiceManagerWeb.EditorLive do
         value: value,
         total: total,
         product_id_to_change: nil,
-        is_saved: false
+        is_saved: false,
+        offset: 0,
+        pages: pages,
+        page_num: 1
       )
 
     {:ok, socket}
+  end
+
+  def handle_event("next", _, socket) do
+    if length(socket.assigns.products) == @size do
+      offset = socket.assigns.offset + @size
+
+      products = Inventory.list_products(socket.assigns.company_name, @size, offset)
+
+      {:noreply,
+       socket
+       |> assign(products: products)
+       |> assign(page_num: socket.assigns.page_num + 1)
+       |> assign(offset: offset)}
+    else
+      Process.send_after(self(), :clear_flash, 1000)
+
+      {:noreply,
+       socket
+       |> put_flash(:error, "Reached last page")}
+    end
+  end
+
+  def handle_event("previous", _, socket) do
+    if socket.assigns.offset - @size >= 0 do
+      offset = socket.assigns.offset - @size
+
+      products = Inventory.list_products(socket.assigns.company_name, @size, offset)
+
+      {:noreply,
+       socket
+       |> assign(products: products)
+       |> assign(page_num: socket.assigns.page_num - 1)
+       |> assign(offset: offset)}
+    else
+      Process.send_after(self(), :clear_flash, 1000)
+
+      {:noreply,
+       socket
+       |> put_flash(:error, "Already first page")}
+    end
   end
 
   def handle_event("validate", %{"invoice" => params}, socket) do
@@ -72,9 +118,7 @@ defmodule InvoiceManagerWeb.EditorLive do
 
     items = socket.assigns.items
 
-    products = Inventory.list_products(socket.assigns.company_name)
-
-    value = calculate_value(items, products)
+    value = calculate_value(items)
     taxes = calculate_tax(value, tax_rate)
     total = calculate_total(value, taxes, discount)
 
@@ -179,7 +223,7 @@ defmodule InvoiceManagerWeb.EditorLive do
               else: item
           end)
 
-        value = calculate_value(socket.assigns.items, socket.assigns.products)
+        value = calculate_value(items)
         taxes = calculate_tax(value, socket.assigns.tax_rate)
         total = calculate_total(value, taxes, socket.assigns.discount)
 
@@ -191,11 +235,21 @@ defmodule InvoiceManagerWeb.EditorLive do
          |> assign(value: value)}
 
       true ->
-        item = %{product_id: product_id, quantity: 1}
+        product = Inventory.get_product(socket.assigns.company_name, product_id)
+
+        item = %{
+          product_id: product_id,
+          quantity: 1,
+          fixed_price: Decimal.to_float(product.price),
+          fixed_name: product.name
+        }
+
         items = [item | items]
 
-        value = calculate_value(socket.assigns.items, socket.assigns.products)
+        value = calculate_value(items)
+
         taxes = calculate_tax(value, socket.assigns.tax_rate)
+
         total = calculate_total(value, socket.assigns.taxes, socket.assigns.discount)
 
         {:noreply,
@@ -242,7 +296,7 @@ defmodule InvoiceManagerWeb.EditorLive do
               else: item
           end)
 
-        value = calculate_value(items, socket.assigns.products)
+        value = calculate_value(items)
         total = calculate_total(value, socket.assigns.taxes, socket.assigns.discount)
         taxes = calculate_tax(value, socket.assigns.tax_rate)
 
@@ -278,7 +332,7 @@ defmodule InvoiceManagerWeb.EditorLive do
     case Map.get(item, :id) do
       nil ->
         items = List.delete(items, item)
-        value = calculate_value(items, socket.assigns.products)
+        value = calculate_value(items)
         total = calculate_total(value, socket.assigns.taxes, socket.assigns.discount)
 
         {:noreply,
@@ -295,10 +349,12 @@ defmodule InvoiceManagerWeb.EditorLive do
         Orders.delete_item(saved_item)
         Inventory.update_product(product, %{"stock" => product.stock + saved_item.quantity})
 
-        products = Inventory.list_products(socket.assigns.company_name)
+        products =
+          Inventory.list_products(socket.assigns.company_name, @size, socket.assigns.offset)
+
         items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
 
-        value = calculate_value(items, products)
+        value = calculate_value(items)
         total = calculate_total(value, socket.assigns.taxes, socket.assigns.discount)
 
         {:noreply,
@@ -316,17 +372,14 @@ defmodule InvoiceManagerWeb.EditorLive do
     {:noreply, clear_flash(socket)}
   end
 
-  defp get_product_field(assigns, product_id, field) do
-    product = Enum.find(assigns.products, &(&1.id == product_id))
-    Map.get(product, field)
-  end
-
   defp update_invoice(invoice, attrs, socket) do
     case Orders.update_invoice(invoice, attrs) do
       {:ok, _invoice} ->
         Process.send_after(self(), :clear_flash, 1000)
 
-        products = Inventory.list_products(socket.assigns.company_name)
+        products =
+          Inventory.list_products(socket.assigns.company_name, @size, socket.assigns.offset)
+
         items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
 
         {:noreply,
@@ -341,12 +394,18 @@ defmodule InvoiceManagerWeb.EditorLive do
     end
   end
 
-  defp calculate_value([], _), do: 0
+  defp calculate_value([]), do: 0
 
-  defp calculate_value(items, products) do
+  defp calculate_value(items) do
     items
+    |> Enum.map(fn item ->
+      if is_float(item.fixed_price),
+        do: item,
+        else: Map.update!(item, :fixed_price, &Decimal.to_float(&1))
+    end)
     |> Enum.reduce(0, fn item, acc ->
-      item.quantity * Decimal.to_float(Enum.find(products, &(&1.id == item.product_id)).price) +
+      item.quantity *
+        item.fixed_price +
         acc
     end)
     |> Float.round(2)

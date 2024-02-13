@@ -8,15 +8,38 @@ defmodule InvoiceManager.Inventory do
   alias InvoiceManager.Repo
   alias InvoiceManager.Inventory.Product
 
-  def list_products(company_name) do
+  # @spec list_products(any(), integer(), integer()) :: any()
+  def list_products(company_name, size, offset) do
     products =
       from company in Company,
         where: company.name == ^company_name,
         join: product in assoc(company, :products),
         select: product,
-        order_by: product.inserted_at
+        offset: ^offset,
+        limit: ^size
 
     Repo.all(products)
+  end
+
+  def list_all_products(company_name) do
+    products =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: product in assoc(company, :products),
+        select: product
+
+    Repo.all(products)
+  end
+
+  def length_products(company_name) do
+    products =
+      from company in Company,
+        where: company.name == ^company_name,
+        join: product in assoc(company, :products),
+        select: product
+
+    Repo.all(products)
+    |> length()
   end
 
   @doc """
@@ -84,9 +107,6 @@ defmodule InvoiceManager.Inventory do
     product
     |> Product.changeset(attrs)
     |> Repo.update()
-  end
-
-  def update_products_stock(items) do
   end
 
   @doc """

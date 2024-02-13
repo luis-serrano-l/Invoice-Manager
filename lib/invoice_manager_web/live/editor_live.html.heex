@@ -107,7 +107,7 @@
                     <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl">
                     </span>
                     <span class="relative font-semibold text-zinc-900">
-                      <%= get_product_field(assigns, item.product_id, :name) %>
+                      <%= item.fixed_name %>
                     </span>
                   </div>
                 </td>
@@ -116,7 +116,7 @@
                     <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl">
                     </span>
                     <span class="relative mr-10">
-                      <%= to_eur(get_product_field(assigns, item.product_id, :price)) %>
+                      <%= to_eur(item.fixed_price) %>
                     </span>
                   </div>
                 </td>
@@ -216,6 +216,24 @@
           </button>
         </:action>
       </.table>
+      <div class="flex justify-between">
+        <button
+          phx-click="previous"
+          phx-value-current_offest={@offset}
+          class="border border-blue-700 mt-2 bg-blue-500 text-white font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600"
+        >
+          &lt;
+        </button>
+        <button
+          phx-click="next"
+          class="border border-blue-700 mt-2 bg-blue-500 text-white font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600"
+        >
+          &gt;
+        </button>
+      </div>
+      <div class="flex justify-center">
+        <%= @page_num %> - <%= @pages %>
+      </div>
     </div>
   </div>
 </div>

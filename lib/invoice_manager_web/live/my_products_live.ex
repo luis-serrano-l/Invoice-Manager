@@ -5,10 +5,14 @@ defmodule InvoiceManagerWeb.MyProductsLive do
   alias InvoiceManager.Inventory
   use InvoiceManagerWeb, :live_view
 
+  @size 20
+
   def mount(%{"company_name" => _company_name}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
     company_name = Business.get_company!(user.company_id).name
-    products = Inventory.list_products(company_name)
+    Inventory.list_all_products(company_name)
+    products = Inventory.list_products(company_name, @size, 0)
+    pages = (Inventory.length_products(company_name) / @size) |> ceil()
     product_changeset = Inventory.change_product(%Product{})
 
     socket =
@@ -20,10 +24,51 @@ defmodule InvoiceManagerWeb.MyProductsLive do
         changing_inventory: false,
         product_id_to_change: nil,
         product_field_to_change: "",
-        user_is_admin: user.is_admin
+        user_is_admin: user.is_admin,
+        offset: 0,
+        page_num: 1,
+        pages: pages
       )
 
     {:ok, socket}
+  end
+
+  def handle_event("next", _, socket) do
+    if socket.assigns.page_num == socket.assigns.pages do
+      Process.send_after(self(), :clear_flash, 1000)
+
+      {:noreply,
+       socket
+       |> put_flash(:error, "Reached last page")}
+    else
+      offset = socket.assigns.offset + @size
+      products = Inventory.list_products(socket.assigns.company_name, @size, offset)
+
+      {:noreply,
+       socket
+       |> assign(products: products)
+       |> assign(page_num: socket.assigns.page_num + 1)
+       |> assign(offset: offset)}
+    end
+  end
+
+  def handle_event("previous", _, socket) do
+    if socket.assigns.page_num == 1 do
+      Process.send_after(self(), :clear_flash, 1000)
+
+      {:noreply,
+       socket
+       |> put_flash(:error, "Already first page")}
+    else
+      offset = socket.assigns.offset - @size
+      products = Inventory.list_products(socket.assigns.company_name, @size, offset)
+
+      {:noreply,
+       socket
+       |> assign(products: products)
+       |> assign(page_num: socket.assigns.page_num - 1)
+       |> assign(offset: offset)}
+    end
   end
 
   def handle_event("validate", %{"product" => params}, socket) do
@@ -81,7 +126,8 @@ defmodule InvoiceManagerWeb.MyProductsLive do
            socket.assigns.product_field_to_change => product_input
          }) do
       {:ok, _product} ->
-        products = Inventory.list_products(socket.assigns.company_name)
+        products =
+          Inventory.list_products(socket.assigns.company_name, @size, socket.assigns.offset)
 
         {:noreply,
          socket
