@@ -6,6 +6,16 @@
       <h2 class="text-center font-semibold leading-6 text-blue-700">
         INVENTORY
       </h2>
+      <form phx-change="search" phx-submit="search">
+        <input
+          placeholder="search"
+          class="mt-2 h-10 border border-slate-400 rounded bg-white px-5 text-base focus:outline-none"
+          type="text"
+          name="product_search"
+          value={@product_search}
+          phx-debounce="300"
+        />
+      </form>
       <button
         :if={@products != []}
         phx-click="change-inventory-option"
@@ -130,7 +140,7 @@
         </button>
       </div>
       <div class="flex justify-center">
-        <%= @page_num %> - <%= @pages %>
+        <%= @page_num %> / <%= @pages %>
       </div>
     </div>
     <div :if={!@new_product} class="bg-white rounded px-2 pt-2 pb-8 mb-4 basis-1/4">

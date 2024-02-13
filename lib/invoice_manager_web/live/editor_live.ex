@@ -53,10 +53,20 @@ defmodule InvoiceManagerWeb.EditorLive do
         is_saved: false,
         offset: 0,
         pages: pages,
-        page_num: 1
+        page_num: 1,
+        product_search: ""
       )
 
     {:ok, socket}
+  end
+
+  def handle_event("search", %{"product_search" => product_search}, socket) do
+    products = Inventory.search_products(socket.assigns.company_name, product_search)
+
+    {:noreply,
+     socket
+     |> assign(products: products)
+     |> assign(product_search: product_search)}
   end
 
   def handle_event("next", _, socket) do

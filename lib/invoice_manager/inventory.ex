@@ -21,12 +21,13 @@ defmodule InvoiceManager.Inventory do
     Repo.all(products)
   end
 
-  def list_all_products(company_name) do
+  def search_products(company_name, product_string) do
     products =
       from company in Company,
         where: company.name == ^company_name,
         join: product in assoc(company, :products),
-        select: product
+        select: product,
+        where: ilike(product.name, ^"#{product_string}%")
 
     Repo.all(products)
   end

@@ -10,7 +10,6 @@ defmodule InvoiceManagerWeb.MyProductsLive do
   def mount(%{"company_name" => _company_name}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
     company_name = Business.get_company!(user.company_id).name
-    Inventory.list_all_products(company_name)
     products = Inventory.list_products(company_name, @size, 0)
     pages = (Inventory.length_products(company_name) / @size) |> ceil()
     product_changeset = Inventory.change_product(%Product{})
@@ -27,10 +26,20 @@ defmodule InvoiceManagerWeb.MyProductsLive do
         user_is_admin: user.is_admin,
         offset: 0,
         page_num: 1,
-        pages: pages
+        pages: pages,
+        product_search: ""
       )
 
     {:ok, socket}
+  end
+
+  def handle_event("search", %{"product_search" => product_search}, socket) do
+    products = Inventory.search_products(socket.assigns.company_name, product_search)
+
+    {:noreply,
+     socket
+     |> assign(products: products)
+     |> assign(product_search: product_search)}
   end
 
   def handle_event("next", _, socket) do

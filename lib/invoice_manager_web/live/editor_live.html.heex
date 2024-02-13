@@ -202,6 +202,16 @@
         </button>
       </div>
 
+      <form phx-change="search" phx-submit="search">
+        <input
+          placeholder="search"
+          class="mt-2 h-10 border border-slate-400 rounded bg-white px-5 text-base focus:outline-none"
+          type="text"
+          name="product_search"
+          value={@product_search}
+          phx-debounce="300"
+        />
+      </form>
       <.table id="products" rows={@products}>
         <:col :let={product} label="Name"><%= product.name %></:col>
         <:col :let={product} label="Price"><%= product.price %></:col>
@@ -232,7 +242,7 @@
         </button>
       </div>
       <div class="flex justify-center">
-        <%= @page_num %> - <%= @pages %>
+        <%= @page_num %> / <%= @pages %>
       </div>
     </div>
   </div>
