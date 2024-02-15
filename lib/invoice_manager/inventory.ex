@@ -15,6 +15,7 @@ defmodule InvoiceManager.Inventory do
         where: company.name == ^company_name,
         join: product in assoc(company, :products),
         select: product,
+        order_by: [desc: product.updated_at],
         offset: ^offset,
         limit: ^size
 
