@@ -36,7 +36,6 @@ defmodule InvoiceManagerWeb.RegisterCompanyLive do
           "company_id" => company.id,
           "is_admin" => true
         })
-        |> IO.inspect(label: "UPDATED USER")
 
         {:noreply,
          socket
