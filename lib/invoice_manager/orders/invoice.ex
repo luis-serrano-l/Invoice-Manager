@@ -1,8 +1,8 @@
 defmodule InvoiceManager.Orders.Invoice do
-  alias InvoiceManager.Business.Company
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias InvoiceManager.Business.Company
   alias InvoiceManager.Orders.Item
 
   schema "invoices" do

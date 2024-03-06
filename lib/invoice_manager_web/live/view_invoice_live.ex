@@ -1,8 +1,9 @@
 defmodule InvoiceManagerWeb.ViewInvoiceLive do
+  use InvoiceManagerWeb, :live_view
+
   alias InvoiceManager.Accounts
   alias InvoiceManager.Business
   alias InvoiceManager.Orders
-  use InvoiceManagerWeb, :live_view
 
   def mount(
         %{"company_name" => _company_name, "role" => _role, "invoice_id" => invoice_id},

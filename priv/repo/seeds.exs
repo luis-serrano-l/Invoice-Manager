@@ -10,8 +10,8 @@
 # We recommend using the bang functions (`insert!`, `update!`
 # and so on) as they will fail if something goes wrong.
 
-alias InvoiceManager.Repo
 alias InvoiceManager.Inventory.Product
+alias InvoiceManager.Repo
 
 %Product{name: "Potato", price: 2, stock: 3000, company_id: 1}
 |> Repo.insert!()

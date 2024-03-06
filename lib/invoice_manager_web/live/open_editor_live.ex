@@ -1,14 +1,15 @@
 defmodule InvoiceManagerWeb.OpenEditorLive do
-  alias InvoiceManager.Business
-  alias InvoiceManager.Accounts
-  alias InvoiceManager.Orders
   use InvoiceManagerWeb, :live_view
+
+  alias InvoiceManager.Accounts
+  alias InvoiceManager.Business
+  alias InvoiceManager.Orders
 
   def mount(%{"company_name" => _company_name}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
     company_name = Business.get_company!(user.company_id).name
 
-    invoices = Orders.list_unsent_invoices(company_name)
+    invoices = Orders.list_unsent_invoices(user.company_id)
 
     socket =
       assign(socket,

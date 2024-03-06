@@ -1,10 +1,11 @@
 defmodule InvoiceManagerWeb.EditorLive do
-  alias InvoiceManager.Business
-  alias InvoiceManager.Accounts
-  alias InvoiceManager.Inventory
   use InvoiceManagerWeb, :live_view
-  alias InvoiceManager.Orders.Invoice
+
+  alias InvoiceManager.Accounts
+  alias InvoiceManager.Business
+  alias InvoiceManager.Inventory
   alias InvoiceManager.Orders
+  alias InvoiceManager.Orders.Invoice
 
   @size 12
 
@@ -19,12 +20,13 @@ defmodule InvoiceManagerWeb.EditorLive do
       ) do
     user = Accounts.get_user_by_session_token(session["user_token"])
     company = Business.get_company!(user.company_id)
+    company_id = user.company_id
     company_name = company.name
     invoice_id = String.to_integer(invoice_id)
     invoice = Orders.get_invoice!(invoice_id)
     invoice_changeset = Orders.change_invoice(invoice)
-    products = Inventory.list_products(company_name, @size, 0)
-    pages = (Inventory.length_products(company_name) / @size) |> ceil()
+    products = Inventory.list_products(company_id, @size, 0)
+    pages = (Inventory.count_products(company_id) / @size) |> ceil()
     items = Orders.list_items(company_name, invoice_id)
     tax_rate = Decimal.to_float(invoice.tax_rate)
     discount = Decimal.to_float(invoice.discount)
@@ -36,6 +38,7 @@ defmodule InvoiceManagerWeb.EditorLive do
     socket =
       assign(socket,
         company_name: company_name,
+        company_id: company_id,
         customer_name: customer_name,
         operation_date: Date.utc_today(),
         invoice_id: invoice_id,
@@ -61,7 +64,7 @@ defmodule InvoiceManagerWeb.EditorLive do
   end
 
   def handle_event("search", %{"product_search" => product_search}, socket) do
-    products = Inventory.search_products(socket.assigns.company_name, product_search)
+    products = Inventory.search_products(socket.assigns.company_id, product_search)
 
     {:noreply,
      socket
@@ -73,7 +76,7 @@ defmodule InvoiceManagerWeb.EditorLive do
     if length(socket.assigns.products) == @size do
       offset = socket.assigns.offset + @size
 
-      products = Inventory.list_products(socket.assigns.company_name, @size, offset)
+      products = Inventory.list_products(socket.assigns.company_id, @size, offset)
 
       {:noreply,
        socket
@@ -93,7 +96,7 @@ defmodule InvoiceManagerWeb.EditorLive do
     if socket.assigns.offset - @size >= 0 do
       offset = socket.assigns.offset - @size
 
-      products = Inventory.list_products(socket.assigns.company_name, @size, offset)
+      products = Inventory.list_products(socket.assigns.company_id, @size, offset)
 
       {:noreply,
        socket
@@ -245,7 +248,7 @@ defmodule InvoiceManagerWeb.EditorLive do
          |> assign(value: value)}
 
       true ->
-        product = Inventory.get_product(socket.assigns.company_name, product_id)
+        product = Inventory.get_product!(product_id)
 
         item = %{
           product_id: product_id,
@@ -274,7 +277,7 @@ defmodule InvoiceManagerWeb.EditorLive do
 
   def handle_event("change-quantity", %{"new_quantity" => new_quantity}, socket) do
     product_id = socket.assigns.product_id_to_change
-    product = Inventory.get_product(socket.assigns.company_name, product_id)
+    product = Inventory.get_product!(product_id)
     items = socket.assigns.items
     quantity = Enum.find(items, &(&1.product_id == product_id)).quantity
     new_quantity = String.to_integer(new_quantity)
@@ -355,12 +358,12 @@ defmodule InvoiceManagerWeb.EditorLive do
 
       id ->
         saved_item = Orders.get_item(socket.assigns.company_name, socket.assigns.invoice_id, id)
-        product = Inventory.get_product(socket.assigns.company_name, product_id)
+        product = Inventory.get_product!(product_id)
         Orders.delete_item(saved_item)
         Inventory.update_product(product, %{"stock" => product.stock + saved_item.quantity})
 
         products =
-          Inventory.list_products(socket.assigns.company_name, @size, socket.assigns.offset)
+          Inventory.list_products(socket.assigns.company_id, @size, socket.assigns.offset)
 
         items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
 
@@ -388,7 +391,7 @@ defmodule InvoiceManagerWeb.EditorLive do
         Process.send_after(self(), :clear_flash, 1000)
 
         products =
-          Inventory.list_products(socket.assigns.company_name, @size, socket.assigns.offset)
+          Inventory.list_products(socket.assigns.company_id, @size, socket.assigns.offset)
 
         items = Orders.list_items(socket.assigns.company_name, socket.assigns.invoice_id)
 

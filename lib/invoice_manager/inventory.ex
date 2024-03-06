@@ -4,44 +4,34 @@ defmodule InvoiceManager.Inventory do
   """
 
   import Ecto.Query, warn: false
-  alias InvoiceManager.Business.Company
-  alias InvoiceManager.Repo
+
   alias InvoiceManager.Inventory.Product
+  alias InvoiceManager.Repo
 
   # @spec list_products(any(), integer(), integer()) :: any()
-  def list_products(company_name, size, offset) do
+  def list_products(company_id, size, offset) do
     products =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: product in assoc(company, :products),
-        select: product,
-        order_by: [desc: product.updated_at],
+      from p in Product,
+        where: p.company_id == ^company_id,
+        select: p,
         offset: ^offset,
         limit: ^size
 
     Repo.all(products)
   end
 
-  def search_products(company_name, product_string) do
+  def search_products(company_id, product_string) do
     products =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: product in assoc(company, :products),
-        select: product,
-        where: ilike(product.name, ^"#{product_string}%")
+      from p in Product,
+        where: p.company_id == ^company_id,
+        select: p,
+        where: ilike(p.name, ^"#{product_string}")
 
     Repo.all(products)
   end
 
-  def length_products(company_name) do
-    products =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: product in assoc(company, :products),
-        select: product
-
-    Repo.all(products)
-    |> length()
+  def count_products(company_id) do
+    Repo.aggregate(Product, :count, company_id: company_id)
   end
 
   @doc """
@@ -60,17 +50,6 @@ defmodule InvoiceManager.Inventory do
   """
   def get_product!(id), do: Repo.get!(Product, id)
 
-  def get_product(company_name, id) do
-    product =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: product in assoc(company, :products),
-        where: product.id == ^id,
-        select: product
-
-    Repo.one(product)
-  end
-
   @doc """
   Creates a product.
 
@@ -83,9 +62,8 @@ defmodule InvoiceManager.Inventory do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_product(company_name, attrs) do
-    company = Repo.get_by(Company, name: company_name)
-    product_params = Map.put(attrs, "company_id", company.id)
+  def create_product(company_id, attrs) do
+    product_params = Map.put(attrs, "company_id", company_id)
 
     %Product{}
     |> Product.changeset(product_params)

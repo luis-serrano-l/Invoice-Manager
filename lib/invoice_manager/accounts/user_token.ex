@@ -1,6 +1,7 @@
 defmodule InvoiceManager.Accounts.UserToken do
   use Ecto.Schema
   import Ecto.Query
+
   alias InvoiceManager.Accounts.UserToken
 
   @hash_algorithm :sha256

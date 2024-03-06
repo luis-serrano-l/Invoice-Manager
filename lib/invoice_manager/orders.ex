@@ -4,11 +4,11 @@ defmodule InvoiceManager.Orders do
   """
 
   import Ecto.Query, warn: false
-  alias InvoiceManager.Inventory
-  alias InvoiceManager.Business.Company
-  alias InvoiceManager.Repo
 
+  alias InvoiceManager.Business.Company
+  alias InvoiceManager.Inventory
   alias InvoiceManager.Orders.Invoice
+  alias InvoiceManager.Repo
 
   @doc """
   Returns the list of invoices.
@@ -19,41 +19,36 @@ defmodule InvoiceManager.Orders do
       [%Invoice{}, ...]
 
   """
-  def list_invoices(company_name, "personal") do
+  def list_invoices(company_id, "personal") do
     invoices =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.customer_id == company.id,
-        where: invoice.sent == true,
-        order_by: invoice.updated_at,
-        select: invoice
+      from i in Invoice,
+        where: i.customer_id == ^company_id,
+        where: i.sent == true,
+        order_by: i.updated_at,
+        select: i
 
     Repo.all(invoices)
   end
 
-  def list_invoices(company_name, "customers") do
+  def list_invoices(company_id, "customers") do
     invoices =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.company_id == company.id,
-        where: invoice.sent == true,
-        order_by: invoice.updated_at,
-        select: invoice
+      from i in Invoice,
+        where: i.company_id == ^company_id,
+        where: i.sent == true,
+        order_by: i.updated_at,
+        select: i
 
     Repo.all(invoices)
   end
 
-  def list_unsent_invoices(company_name) do
-    invoice =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.sent == false,
-        select: invoice
+  def list_unsent_invoices(company_id) do
+    invoices =
+      from i in Invoice,
+        where: i.company_id == ^company_id,
+        where: i.sent == false,
+        select: i
 
-    Repo.all(invoice)
+    Repo.all(invoices)
   end
 
   @doc """
@@ -265,7 +260,7 @@ defmodule InvoiceManager.Orders do
 
   def update_items_and_products(company_name, invoice_id, items) do
     Enum.map(items, fn item ->
-      product = Inventory.get_product(company_name, item.product_id)
+      product = Inventory.get_product!(item.product_id)
 
       case Map.get(item, :id) do
         nil ->

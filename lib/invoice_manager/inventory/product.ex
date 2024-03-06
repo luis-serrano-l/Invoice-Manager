@@ -2,8 +2,8 @@ defmodule InvoiceManager.Inventory.Product do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias InvoiceManager.Orders.Item
   alias InvoiceManager.Business.Company
+  alias InvoiceManager.Orders.Item
 
   schema "products" do
     field :name, :string

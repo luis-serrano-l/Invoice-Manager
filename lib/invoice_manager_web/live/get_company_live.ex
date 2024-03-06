@@ -1,8 +1,8 @@
 defmodule InvoiceManagerWeb.GetCompanyLive do
-  alias InvoiceManager.Business
-  alias InvoiceManager.Accounts
-
   use InvoiceManagerWeb, :live_view
+
+  alias InvoiceManager.Accounts
+  alias InvoiceManager.Business
 
   def mount(_params, session, socket) do
     Process.send_after(self(), :clear_flash, 900)

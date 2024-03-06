@@ -3,8 +3,8 @@ defmodule InvoiceManager.Business.Company do
   import Ecto.Changeset
 
   alias InvoiceManager.Accounts.User
-  alias InvoiceManager.Orders.Invoice
   alias InvoiceManager.Inventory.Product
+  alias InvoiceManager.Orders.Invoice
 
   schema "companies" do
     field :address, :string

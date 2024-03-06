@@ -1,8 +1,9 @@
 defmodule InvoiceManagerWeb.NewMemberLive do
-  alias InvoiceManager.Business
+  use InvoiceManagerWeb, :live_view
+
   alias InvoiceManager.Accounts
   alias InvoiceManager.Accounts.User
-  use InvoiceManagerWeb, :live_view
+  alias InvoiceManager.Business
 
   def mount(%{"company_name" => _company_name}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
