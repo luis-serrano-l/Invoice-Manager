@@ -25,7 +25,7 @@ defmodule InvoiceManager.InventoryTest do
 
       assert {:ok, %Product{} = product} = Inventory.create_product(valid_attrs)
       assert product.name == "some name"
-      assert product.price == Decimal.new("120.5")
+      assert product.price == 120.5
       assert product.stock == 42
     end
 
@@ -39,7 +39,7 @@ defmodule InvoiceManager.InventoryTest do
 
       assert {:ok, %Product{} = product} = Inventory.update_product(product, update_attrs)
       assert product.name == "some updated name"
-      assert product.price == Decimal.new("456.7")
+      assert product.price == 456.7
       assert product.stock == 43
     end
 

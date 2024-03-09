@@ -8,12 +8,12 @@ defmodule InvoiceManager.Inventory do
   alias InvoiceManager.Inventory.Product
   alias InvoiceManager.Repo
 
-  # @spec list_products(any(), integer(), integer()) :: any()
   def list_products(company_id, size, offset) do
     products =
       from p in Product,
         where: p.company_id == ^company_id,
         select: p,
+        order_by: [desc: p.updated_at],
         offset: ^offset,
         limit: ^size
 
@@ -25,13 +25,18 @@ defmodule InvoiceManager.Inventory do
       from p in Product,
         where: p.company_id == ^company_id,
         select: p,
-        where: ilike(p.name, ^"#{product_string}")
+        where: ilike(p.name, ^"#{product_string}%")
 
     Repo.all(products)
   end
 
   def count_products(company_id) do
-    Repo.aggregate(Product, :count, company_id: company_id)
+    products =
+      from p in Product,
+        where: p.company_id == ^company_id,
+        select: p
+
+    Repo.aggregate(products, :count)
   end
 
   @doc """

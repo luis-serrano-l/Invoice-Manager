@@ -1,60 +1,51 @@
 defmodule InvoiceManagerWeb.BrowserLive do
   use InvoiceManagerWeb, :live_view
+  import InvoiceManager.Utils
 
   alias InvoiceManager.Accounts
-  alias InvoiceManager.Business
   alias InvoiceManager.Orders
 
-  def mount(%{"company_name" => _company_name, "role" => role}, session, socket) do
+  @size 5
+
+  def mount(%{"role" => role}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
-    company = Business.get_company!(user.company_id)
-    company_name = company.name
-    invoices = Orders.list_invoices(user.company_id, role)
+    company_id = user.company_id
 
     socket =
       assign(socket,
-        invoices: invoices,
+        invoices: Orders.list_invoices(company_id, @size, 0, role),
+        user: user,
         role: role,
-        company_name: company_name,
-        user_is_admin: user.is_admin
+        company_name: get_company_name(company_id),
+        pagination: new_paginate(company_id, @size, role)
       )
 
     {:ok, socket}
   end
 
+  def handle_event("change-page", %{"direction" => direction}, socket) do
+    pagination = socket.assigns.pagination
+    company_id = socket.assigns.user.company_id
+    role = socket.assigns.role
+
+    case {{pagination.page_num, pagination.pages}, direction} do
+      {{last, last}, "right"} ->
+        {:noreply, put_flash(socket, :error, "Reached last page")}
+
+      {{1, _}, "left"} ->
+        {:noreply, put_flash(socket, :error, "Already first page")}
+
+      {_, "right"} ->
+        {:noreply, assign(socket, change_page(company_id, pagination, 1, @size, role))}
+
+      {_, "left"} ->
+        {:noreply, assign(socket, change_page(company_id, pagination, -1, @size, role))}
+    end
+  end
+
   def handle_event("open-invoice", %{"invoice_id" => invoice_id}, socket) do
     {:noreply,
      socket
-     |> redirect(
-       to:
-         ~p"/invoice_manager/#{socket.assigns.company_name}/browser/#{socket.assigns.role}/#{invoice_id}"
-     )}
-  end
-
-  defp get_company_name(company_id), do: Business.get_company_name(company_id)
-
-  defp to_eur(number) when is_float(number) do
-    number = Float.to_string(number)
-
-    if Regex.match?(~r/^\d+\.\d$/, number) do
-      number <> "0 €"
-    else
-      number <> " €"
-    end
-  end
-
-  defp to_eur(number) do
-    number = Decimal.to_string(number)
-
-    cond do
-      Regex.match?(~r/^\d+\.\d$/, number) ->
-        number <> "0 €"
-
-      Regex.match?(~r/^\d+$/, number) ->
-        number <> ".00 €"
-
-      true ->
-        number <> " €"
-    end
+     |> redirect(to: ~p"/invoice_manager/browser/#{socket.assigns.role}/#{invoice_id}")}
   end
 end

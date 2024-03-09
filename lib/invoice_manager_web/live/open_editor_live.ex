@@ -7,15 +7,13 @@ defmodule InvoiceManagerWeb.OpenEditorLive do
 
   def mount(%{"company_name" => _company_name}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
-    company_name = Business.get_company!(user.company_id).name
-
     invoices = Orders.list_unsent_invoices(user.company_id)
 
     socket =
       assign(socket,
-        company_name: company_name,
+        company_name: Business.get_company!(user.company_id).name,
+        company_id: user.company_id,
         form: to_form(%{}, as: "customer"),
-        company_name: company_name,
         user_is_admin: user.is_admin,
         invoices: invoices
       )
@@ -34,8 +32,6 @@ defmodule InvoiceManagerWeb.OpenEditorLive do
          )}
 
       {:error, message} ->
-        Process.send_after(self(), :clear_flash, 1200)
-
         {:noreply,
          socket
          |> assign(form: to_form(%{"name" => customer_name}, as: "customer"))
@@ -59,17 +55,12 @@ defmodule InvoiceManagerWeb.OpenEditorLive do
   end
 
   def handle_event("delete-invoice", %{"invoice_id" => invoice_id}, socket) do
-    invoice = Orders.get_invoice(socket.assigns.company_name, invoice_id)
+    invoice = Orders.get_invoice!(invoice_id)
     Orders.delete_invoice(invoice)
-    invoices = Orders.list_unsent_invoices(socket.assigns.company_name)
 
     {:noreply,
      socket
-     |> assign(invoices: invoices)}
-  end
-
-  def handle_info(:clear_flash, socket) do
-    {:noreply, clear_flash(socket)}
+     |> assign(invoices: Orders.list_unsent_invoices(socket.assigns.company_id))}
   end
 
   defp get_company_name(company_id), do: Business.get_company_name(company_id)

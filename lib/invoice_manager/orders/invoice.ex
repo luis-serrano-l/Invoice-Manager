@@ -7,16 +7,16 @@ defmodule InvoiceManager.Orders.Invoice do
 
   schema "invoices" do
     field :billing_date, :date
-    field :discount, :decimal, default: 0.0
+    field :discount, :float, default: 0.00
     field :extra_info, :string
     field :invoice_number, :integer
     field :operation_date, :date
-    field :tax_rate, :decimal, default: 0.0
-    field :total, :decimal, default: 0
+    field :tax_rate, :float, default: 0.00
+    field :total, :float, default: 0.00
     field :sent, :boolean, default: false
     belongs_to :company, Company
     belongs_to :customer, Company
-    has_many :items, Item
+    has_many :items, Item, on_replace: :delete
 
     timestamps()
   end

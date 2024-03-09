@@ -1,5 +1,5 @@
 <div class="flex">
-  <.invoice_navigation company_name={@company_name} user_is_admin={@user_is_admin}>
+  <.invoice_navigation company_name={@company_name} user_is_admin={@user.is_admin}>
   </.invoice_navigation>
   <div class="flex-grow mx-auto max-w-sm">
     <.table id="invoice" rows={@invoices}>
@@ -15,16 +15,35 @@
           <%= invoice.invoice_number %>
         </span>
       </:col>
-      <:col :let={invoice} :if={@role == "customers"} label="Customer">
-        <%= get_company_name(invoice.customer_id) %>
-      </:col>
-      <:col :let={invoice} :if={@role == "personal"} label="Company">
+      <:col :let={invoice} :if={@role == "incoming"} label="Company">
         <%= get_company_name(invoice.company_id) %>
       </:col>
-      <:col :let={invoice} label="Total"><%= to_eur(invoice.total) %></:col>
+      <:col :let={invoice} :if={@role == "outgoing"} label="Customer">
+        <%= get_company_name(invoice.customer_id) %>
+      </:col>
+      <:col :let={invoice} label="Total"><%= to_euro(invoice.total) %></:col>
       <:col :let={invoice} label="Billing Date">
         <%= "#{invoice.billing_date.month} / #{invoice.billing_date.day} / #{invoice.billing_date.year}" %>
       </:col>
     </.table>
+    <div class="flex justify-between">
+      <button
+        phx-click="change-page"
+        phx-value-direction="left"
+        class="border border-blue-700 mt-2 bg-blue-500 text-white font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600"
+      >
+        &lt;
+      </button>
+      <button
+        phx-click="change-page"
+        phx-value-direction="right"
+        class="border border-blue-700 mt-2 bg-blue-500 text-white font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600"
+      >
+        &gt;
+      </button>
+    </div>
+    <div class="flex justify-center">
+      <%= @pagination.page_num %> / <%= @pagination.pages %>
+    </div>
   </div>
 </div>

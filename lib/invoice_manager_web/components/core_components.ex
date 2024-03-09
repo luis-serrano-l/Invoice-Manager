@@ -111,6 +111,7 @@ defmodule InvoiceManagerWeb.CoreComponents do
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
+      phx-mounted={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
       class={[
         "fixed top-2 right-2 w-80 sm:w-96 z-50 rounded-lg p-3 ring-1",
@@ -233,7 +234,7 @@ defmodule InvoiceManagerWeb.CoreComponents do
           <ul class="">
             <li class="">
               <.link
-                navigate={"/invoice_manager/#{@company_name}/browser/personal"}
+                navigate="/invoice_manager/browser/incoming"
                 class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
               >
                 Incoming
@@ -241,7 +242,7 @@ defmodule InvoiceManagerWeb.CoreComponents do
             </li>
             <li class="mt-1">
               <.link
-                navigate={"/invoice_manager/#{@company_name}/browser/customers"}
+                navigate="/invoice_manager/browser/outgoing"
                 class="leading-6 text-blue-900 font-semibold hover:text-blue-700"
               >
                 Outgoing
@@ -650,11 +651,10 @@ defmodule InvoiceManagerWeb.CoreComponents do
   def hide(js \\ %JS{}, selector) do
     JS.hide(js,
       to: selector,
-      time: 200,
+      time: 1200,
       transition:
-        {"transition-all transform ease-in duration-200",
-         "opacity-100 translate-y-0 sm:scale-100",
-         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
+        {"transition-all transform", "ease-in duration-1000",
+         "opacity-1 translate-y-4 sm:translate-y-0 sm:scale-95"}
     )
   end
 

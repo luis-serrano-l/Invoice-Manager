@@ -1,5 +1,5 @@
 <div class="flex">
-  <.invoice_navigation company_name={@company_name} user_is_admin={@user_is_admin}>
+  <.invoice_navigation company_name={@company.name} user_is_admin={@user_is_admin}>
   </.invoice_navigation>
 
   <div class="flex-grow">
@@ -10,43 +10,43 @@
         </p>
         <p class="font-normal pb-2"></p>
         <p class="text-sm font-semibold leading-6 text-zinc-600">
-          Company: <%= get_company_name(@invoice.company_id) %>
+          Company: <%= @company.name %>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-600">
-          Email: <%= get_company_contact_email(@invoice.company_id) %>
+          Email: <%= @company.contact_email %>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-600">
-          Phone: <%= get_company_contact_phone(@invoice.company_id) %>
+          Phone: <%= @company.contact_phone %>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-600">
-          Fiscal Number: <%= get_company_fiscal_number(@invoice.company_id) %>
+          Fiscal Number: <%= @company.fiscal_number %>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-600">
           Address
         </p>
 
         <p class="font-normal text-zinc-60 pb-2">
-          <%= get_company_address(@invoice.company_id) %>
+          <%= @company.address %>
         </p>
 
         <hr />
         <h2 class="font-semibold leading-6 text-zinc-800 pb-1">To:</h2>
         <p class="text-sm font-semibold leading-6 text-zinc-800">
-          Customer: <%= get_company_name(@invoice.customer_id) %>
+          Customer: <%= @customer.name %>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-800">
-          Email: <%= get_company_contact_email(@invoice.customer_id) %>
+          Email: <%= @customer.contact_email %>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-800">
-          Phone: <%= get_company_contact_phone(@invoice.customer_id) %>
+          Phone: <%= @customer.contact_phone %>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-800">
-          Fiscal Number: <%= get_company_fiscal_number(@invoice.customer_id) %>
+          Fiscal Number: <%= @customer.fiscal_number %>
         </p>
         <p class="text-sm font-semibold leading-6 text-zinc-800">
           Address
         </p>
-        <p class="font-normal pb-2"><%= get_company_address(@invoice.customer_id) %></p>
+        <p class="font-normal pb-2"><%= @customer.address %></p>
         <hr />
 
         <p class="text-sm font-semibold leading-6 text-zinc-800">
@@ -88,14 +88,14 @@
                     group 
                     """}>
                       <span class="relative font-semibold text-zinc-900">
-                        <%= item.fixed_name %>
+                        <%= item.name %>
                       </span>
                     </div>
                   </td>
                   <td class="relative p-0 ">
                     <div class="block py-4 pr-15">
                       <span class="relative ">
-                        <%= to_eur(item.fixed_price) %>
+                        <%= to_euro(item.price) %>
                       </span>
                     </div>
                   </td>
@@ -109,7 +109,7 @@
                   <td class="relative p-0 ">
                     <div class="block py-4 pr-15">
                       <span class="relative mr-10">
-                        <%= to_eur(calculate_item_value(item.quantity, item.fixed_price)) %>
+                        <%= to_euro(Float.round(item.quantity * item.price, 2)) %>
                       </span>
                     </div>
                   </td>
@@ -121,22 +121,23 @@
           <hr />
           <hr />
           <p class="flex justify-between text-sm leading-6 text-zinc-800 pt-1 pb-1">
-            Subtotal <span class="font-normal"><%= to_eur(@value) %></span>
+            Subtotal <span class="font-normal"><%= to_euro(@costs.value) %></span>
           </p>
 
           <p class="flex justify-between text-sm leading-6 text-zinc-800 pt-1 pb-1">
-            Tax <%= "(#{@invoice.tax_rate} %)" %>
-            <span class="font-normal"><%= "+ " <> to_eur(@tax) %></span>
+            Tax <%= "(#{:erlang.float_to_binary(@invoice.tax_rate, decimals: 2)} %)" %>
+            <span class="font-normal"><%= "+ " <> to_euro(@costs.taxes) %></span>
           </p>
           <hr />
           <p class="flex justify-between text-sm leading-6 text-zinc-800 pt-1 pb-1">
-            Subtotal with tax <span class="font-normal"><%= to_eur(@tax + @value) %></span>
+            Subtotal with tax
+            <span class="font-normal"><%= to_euro(@costs.value + @costs.taxes) %></span>
           </p>
 
           <p class="flex justify-between text-sm leading-6 text-zinc-800 pt-1 pb-1">
             <span>Discount</span>
             <span class="font-normal align-right">
-              <%= "- " <> to_eur(@invoice.discount) %>
+              <%= "- " <> to_euro(@invoice.discount) %>
             </span>
           </p>
           <hr />
@@ -144,7 +145,7 @@
           <p class="flex justify-between font-semibold leading-6 text-zinc-800 mt-1 pt-1 pb-1">
             <span>Total</span>
             <span class="font-semibold">
-              <%= to_eur(@invoice.total) %>
+              <%= to_euro(@invoice.total) %>
             </span>
           </p>
         </div>

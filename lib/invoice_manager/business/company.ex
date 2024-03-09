@@ -33,5 +33,6 @@ defmodule InvoiceManager.Business.Company do
     )
     |> validate_length(:contact_email, max: 160)
     |> unique_constraint(:name)
+    |> unique_constraint(:fiscal_number)
   end
 end

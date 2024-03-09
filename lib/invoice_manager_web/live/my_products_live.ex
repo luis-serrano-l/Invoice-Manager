@@ -1,36 +1,34 @@
 defmodule InvoiceManagerWeb.MyProductsLive do
   use InvoiceManagerWeb, :live_view
+  import InvoiceManager.Utils
 
   alias InvoiceManager.Accounts
   alias InvoiceManager.Business
   alias InvoiceManager.Inventory
   alias InvoiceManager.Inventory.Product
 
-  @size 20
+  @size 3
 
   def mount(%{"company_name" => _company_name}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
     company_id = user.company_id
-    company_name = Business.get_company!(user.company_id).name
-    products = Inventory.list_products(company_id, @size, 0)
-    pages = (Inventory.count_products(company_id) / @size) |> ceil()
-    product_changeset = Inventory.change_product(%Product{})
 
     socket =
       assign(socket,
-        products: products,
-        company_name: company_name,
+        user: user,
         company_id: company_id,
-        form: to_form(product_changeset),
-        new_product: false,
-        changing_inventory: false,
-        product_id_to_change: nil,
-        product_field_to_change: "",
+        products: Inventory.list_products(company_id, @size, 0),
+        company_name: Business.get_company_name(company_id),
+        form: to_form(Inventory.change_product(%Product{})),
         user_is_admin: user.is_admin,
-        offset: 0,
-        page_num: 1,
-        pages: pages,
-        product_search: ""
+        pagination: new_paginate(company_id, @size),
+        product_search: "",
+        options: %{
+          new_product: true,
+          changing_inventory: false,
+          product_field_to_change: "",
+          product_id_to_change: nil
+        }
       )
 
     {:ok, socket}
@@ -45,41 +43,22 @@ defmodule InvoiceManagerWeb.MyProductsLive do
      |> assign(product_search: product_search)}
   end
 
-  def handle_event("next", _, socket) do
-    if socket.assigns.page_num == socket.assigns.pages do
-      Process.send_after(self(), :clear_flash, 1000)
+  def handle_event("change-page", %{"direction" => direction}, socket) do
+    pagination = socket.assigns.pagination
+    company_id = socket.assigns.company_id
 
-      {:noreply,
-       socket
-       |> put_flash(:error, "Reached last page")}
-    else
-      offset = socket.assigns.offset + @size
-      products = Inventory.list_products(socket.assigns.company_id, @size, offset)
+    case {{pagination.page_num, pagination.pages}, direction} do
+      {{last, last}, "right"} ->
+        {:noreply, put_flash(socket, :error, "Reached last page")}
 
-      {:noreply,
-       socket
-       |> assign(products: products)
-       |> assign(page_num: socket.assigns.page_num + 1)
-       |> assign(offset: offset)}
-    end
-  end
+      {{1, _}, "left"} ->
+        {:noreply, put_flash(socket, :error, "Already first page")}
 
-  def handle_event("previous", _, socket) do
-    if socket.assigns.page_num == 1 do
-      Process.send_after(self(), :clear_flash, 1000)
+      {_, "right"} ->
+        {:noreply, assign(socket, change_page(company_id, pagination, 1, @size))}
 
-      {:noreply,
-       socket
-       |> put_flash(:error, "Already first page")}
-    else
-      offset = socket.assigns.offset - @size
-      products = Inventory.list_products(socket.assigns.company_id, @size, offset)
-
-      {:noreply,
-       socket
-       |> assign(products: products)
-       |> assign(page_num: socket.assigns.page_num - 1)
-       |> assign(offset: offset)}
+      {_, "left"} ->
+        {:noreply, assign(socket, change_page(company_id, pagination, -1, @size))}
     end
   end
 
@@ -93,15 +72,16 @@ defmodule InvoiceManagerWeb.MyProductsLive do
     {:noreply, assign(socket, form: form)}
   end
 
-  def handle_event("add", %{"product" => product_params}, socket) do
-    case Inventory.create_product(socket.assigns.company_id, product_params) do
+  def handle_event("add", %{"product" => params}, socket) do
+    params = convert_price_to_float(params)
+
+    case Inventory.create_product(socket.assigns.company_id, params) do
       {:ok, product} ->
         product_changeset = Inventory.change_product(%Product{})
 
         {:noreply,
          socket
          |> assign(products: socket.assigns.products ++ [product])
-         |> assign(new_product: false)
          |> assign(form: to_form(product_changeset))}
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -109,101 +89,72 @@ defmodule InvoiceManagerWeb.MyProductsLive do
     end
   end
 
-  def handle_event("new_product", _, socket) do
-    {:noreply,
-     socket
-     |> assign(new_product: true)}
-  end
+  def handle_event("show-hide-input", _, socket) do
+    options = socket.assigns.options
 
-  def handle_event("hide", _, socket) do
     {:noreply,
      socket
-     |> assign(new_product: false)}
+     |> assign(options: Map.put(options, :new_product, !options.new_product))}
   end
 
   def handle_event("change-inventory-option", _, socket) do
+    options = socket.assigns.options
+
     {:noreply,
      socket
-     |> assign(changing_inventory: !socket.assigns.changing_inventory)
-     |> assign(product_id_to_change: nil)}
+     |> assign(
+       options:
+         change_map(options, %{
+           changing_inventory: !options.changing_inventory,
+           product_id_to_change: nil
+         })
+     )}
   end
 
   def handle_event("update-product", %{"product_input" => product_input} = _params, socket) do
-    product = Inventory.get_product(socket.assigns.product_id_to_change)
-
-    Process.send_after(self(), :clear_flash, 1400)
+    product = Inventory.get_product!(socket.assigns.options.product_id_to_change)
 
     case Inventory.update_product(product, %{
-           socket.assigns.product_field_to_change => product_input
+           socket.assigns.options.product_field_to_change => product_input
          }) do
       {:ok, _product} ->
         products =
-          Inventory.list_products(socket.assigns.company_id, @size, socket.assigns.offset)
+          Inventory.list_products(
+            socket.assigns.company_id,
+            @size,
+            socket.assigns.pagination.offset
+          )
 
         {:noreply,
          socket
          |> assign(products: products)
-         |> assign(product_id_to_change: nil)
-         |> assign(product_field_to_change: "")}
+         |> assign(
+           options:
+             change_map(socket.assigns.options, %{
+               product_id_to_change: nil,
+               product_field_to_change: ""
+             })
+         )}
 
       {:error, _changeset} ->
         {:noreply, socket}
     end
   end
 
-  def handle_event("change-product-name", %{"product_id" => product_id}, socket) do
-    Process.send_after(self(), :clear_flash, 1200)
-
+  def handle_event("change-product", %{"product_id" => product_id, "field" => field}, socket) do
     {:noreply,
      socket
-     |> assign(product_id_to_change: String.to_integer(product_id))
-     |> assign(product_field_to_change: "name")}
+     |> assign(
+       options:
+         change_map(socket.assigns.options, %{
+           product_id_to_change: String.to_integer(product_id),
+           product_field_to_change: field
+         })
+     )}
   end
 
-  def handle_event("change-product-price", %{"product_id" => product_id}, socket) do
-    Process.send_after(self(), :clear_flash, 1200)
-
-    {:noreply,
-     socket
-     |> assign(product_id_to_change: String.to_integer(product_id))
-     |> assign(product_field_to_change: "price")}
-  end
-
-  def handle_event("change-product-stock", %{"product_id" => product_id}, socket) do
-    Process.send_after(self(), :clear_flash, 1200)
-
-    {:noreply,
-     socket
-     |> assign(product_id_to_change: String.to_integer(product_id))
-     |> assign(product_field_to_change: "stock")}
-  end
-
-  def handle_info(:clear_flash, socket) do
-    {:noreply, clear_flash(socket)}
-  end
-
-  defp to_eur(number) when is_float(number) do
-    number = Float.to_string(number)
-
-    if Regex.match?(~r/^\d+\.\d$/, number) do
-      number <> "0 €"
-    else
-      number <> " €"
-    end
-  end
-
-  defp to_eur(number) do
-    number = Decimal.to_string(number)
-
-    cond do
-      Regex.match?(~r/^\d+\.\d$/, number) ->
-        number <> "0 €"
-
-      Regex.match?(~r/^\d+$/, number) ->
-        number <> ".00 €"
-
-      true ->
-        number <> " €"
-    end
+  defp convert_price_to_float(params) do
+    {float, _} = Float.parse(params["price"])
+    Map.put(params, "price", float)
   end
 end

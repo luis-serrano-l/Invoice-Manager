@@ -23,24 +23,25 @@
         class={"""
           hover:cursor-pointer phx-submit-loading:opacity-75 rounded-lg py-2
           px-1 pt-0 pb-0 absolute top-[-15px] right-[-30px]
-          #{if !@changing_inventory, do: "bg-emerald-200 hover:bg-emerald-300", else: "bg-blue-200 hover:bg-blue-300"}
+          #{if !@options.changing_inventory, do: "bg-emerald-200 hover:bg-emerald-300", else: "bg-blue-200 hover:bg-blue-300"}
           """}
       >
         <span class="font-normal  text-gray-900 text-sm active:text-gray-600">
-          <%= if !@changing_inventory, do: "Change inventory", else: "Set inventory" %>
+          <%= if !@options.changing_inventory, do: "Change inventory", else: "Set inventory" %>
         </span>
       </button>
       <.table id="products" rows={@products}>
         <:col :let={product} label="Name">
           <span
-            phx-click={"#{if @changing_inventory, do: "change-product-name", else: ""}"}
+            phx-click={"#{if @options.changing_inventory, do: "change-product", else: ""}"}
             phx-value-product_id={product.id}
+            phx-value-field="name"
             class={
             """
             py-2 px-3 rounded mr-2 p-0
             #{cond do
-                product.id == @product_id_to_change and @product_field_to_change == "name" -> "bg-blue-400"
-                @changing_inventory -> "focus:cursor-auto bg-blue-50 hover:bg-blue-200 hover:cursor-pointer"
+                product.id == @options.product_id_to_change and @options.product_field_to_change == "name" -> "bg-blue-400"
+                @options.changing_inventory -> "focus:cursor-auto bg-blue-50 hover:bg-blue-200 hover:cursor-pointer"
                 true -> ""
               end
             }
@@ -52,33 +53,35 @@
         </:col>
         <:col :let={product} label="Price">
           <span
-            phx-click={"#{if @changing_inventory, do: "change-product-price", else: ""}"}
+            phx-click={"#{if @options.changing_inventory, do: "change-product", else: ""}"}
             phx-value-product_id={product.id}
+            phx-value-field="price"
             class={
             """
             py-2 px-3 rounded mr-20
             #{cond do
-                product.id == @product_id_to_change and @product_field_to_change == "price" -> "bg-yellow-400"
-                @changing_inventory -> "focus:cursor-auto bg-yellow-50 hover:bg-yellow-200 hover:cursor-pointer mr-20"
+                product.id == @options.product_id_to_change and @options.product_field_to_change == "price" -> "bg-yellow-400"
+                @options.changing_inventory -> "focus:cursor-auto bg-yellow-50 hover:bg-yellow-200 hover:cursor-pointer mr-20"
                 true -> ""
               end
             }
             """
           }
           >
-            <%= to_eur(product.price) %>
+            <%= to_euro(product.price) %>
           </span>
         </:col>
         <:col :let={product} label="Stock">
           <span
-            phx-click={"#{if @changing_inventory, do: "change-product-stock", else: ""}"}
+            phx-click={"#{if @options.changing_inventory, do: "change-product", else: ""}"}
             phx-value-product_id={product.id}
+            phx-value-field="stock"
             class={
             """
             py-2 px-3 rounded mr-6
             #{cond do
-                product.id == @product_id_to_change and @product_field_to_change == "stock" -> "bg-emerald-400"
-                @changing_inventory -> "focus:cursor-auto bg-emerald-50 hover:bg-emerald-200 hover:cursor-pointer"
+                product.id == @options.product_id_to_change and @options.product_field_to_change == "stock" -> "bg-emerald-400"
+                @options.changing_inventory -> "focus:cursor-auto bg-emerald-50 hover:bg-emerald-200 hover:cursor-pointer"
                 true -> ""
               end
             }
@@ -88,20 +91,26 @@
             <%= "x #{product.stock}" %>
           </span>
         </:col>
-        <:col :let={product} :if={@product_id_to_change} label="New value">
-          <form :if={product.id == @product_id_to_change} class="py-0" phx-submit="update-product">
+        <:col :let={product} label="Sku">
+          <%= product.sku %>
+        </:col>
+        <:col :let={product} :if={@options.product_id_to_change} label="New value">
+          <form
+            :if={product.id == @options.product_id_to_change}
+            class="py-0"
+            phx-submit="update-product"
+          >
             <input
-              :if={@product_field_to_change == "name"}
+              :if={@options.product_field_to_change == "name"}
               type="text"
               name="product_input"
               value={product.name}
               autocomplete="off"
               class="w-20 py-1 px-1 rounded text-sm"
               required
-              value="0"
             />
             <input
-              :if={@product_field_to_change == "price"}
+              :if={@options.product_field_to_change == "price"}
               type="number"
               name="product_input"
               value={product.price}
@@ -109,54 +118,81 @@
               class="w-20 py-1 px-2 rounded"
               required
               step=".01"
-              value="0"
+              min="0.01"
             />
             <input
-              :if={@product_field_to_change == "stock"}
+              :if={@options.product_field_to_change == "stock"}
               type="number"
               name="product_input"
               value={product.stock}
               autocomplete="off"
               class="w-20 py-1 px-2 rounded"
+              min="0"
               required
-              value="0"
             />
           </form>
         </:col>
       </.table>
       <div class="flex justify-between">
         <button
-          phx-click="previous"
-          phx-value-current_offest={@offset}
+          phx-click="change-page"
+          phx-value-direction="left"
           class="border border-blue-700 mt-2 bg-blue-500 text-white font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600"
         >
           &lt;
         </button>
         <button
-          phx-click="next"
+          phx-click="change-page"
+          phx-value-direction="right"
           class="border border-blue-700 mt-2 bg-blue-500 text-white font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600"
         >
           &gt;
         </button>
       </div>
       <div class="flex justify-center">
-        <%= @page_num %> / <%= @pages %>
+        <%= @pagination.page_num %> / <%= @pagination.pages %>
       </div>
     </div>
-    <div :if={!@new_product} class="bg-white rounded px-2 pt-2 pb-8 mb-4 basis-1/4">
+    <div :if={!@options.new_product} class="bg-white rounded px-2 pt-2 pb-8 mb-4 basis-1/4">
       <button
         class="bg-blue-200 hover:bg-blue-300 phx-submit-loading:opacity-75 rounded-lg py-3 px-2 pt-0 pb-0 text-gray-900 "
-        phx-click="new_product"
+        phx-click="show-hide-input"
         phx-disable-with="New..."
       >
         New product
       </button>
     </div>
-    <div :if={@new_product} class="bg-white shadow rounded px-2 pt-2 pb-8 mb-4 basis-1/4 relative">
+    <div
+      :if={@options.new_product}
+      class="bg-white shadow rounded px-2 pt-2 pb-8 mb-4 basis-1/4 relative"
+    >
       <.simple_form for={@form} phx-change="validate" phx-submit="add" class="px-4">
-        <.input field={@form[:name]} type="text" label="Name" autocomplete="off" />
-        <.input field={@form[:price]} type="number" label="Price" autocomplete="off" step=".01" />
-        <.input field={@form[:stock]} type="number" label="Stock" autocomplete="off" />
+        <.input field={@form[:name]} type="text" label="Name" autocomplete="off" required />
+        <.input
+          field={@form[:price]}
+          type="number"
+          label="Price"
+          autocomplete="off"
+          step=".01"
+          min="0.01"
+          required
+        />
+        <.input
+          field={@form[:stock]}
+          type="number"
+          label="Stock"
+          autocomplete="off"
+          min="0"
+          required
+        />
+        <.input
+          field={@form[:sku]}
+          type="number"
+          label="Sku"
+          autocomplete="off"
+          step="1"
+          required
+        />
         <:actions>
           <button
             phx-disable-with="Adding..."
@@ -165,7 +201,7 @@
             Add product
           </button>
           <button
-            phx-click="hide"
+            phx-click="show-hide-input"
             phx-disable-with="Hiding..."
             class="bg-blue-200 hover:bg-blue-300 phx-submit-loading:opacity-75 rounded-lg py-3 px-2 pt-0 pb-0 px-1 pt-0 pb-0 text-gray-900 absolute top-[5px] right-[10px]"
           >

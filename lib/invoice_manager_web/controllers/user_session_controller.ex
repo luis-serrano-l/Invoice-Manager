@@ -22,14 +22,10 @@ defmodule InvoiceManagerWeb.UserSessionController do
     %{"email" => email, "password" => password} = user_params
 
     if user = Accounts.get_user_by_email_and_password(email, password) do
-      Process.send_after(self(), :clear_flash, 1200)
-
       conn
       |> put_flash(:info, info)
       |> UserAuth.log_in_user(user, user_params)
     else
-      Process.send_after(self(), :clear_flash, 1200)
-
       # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
       conn
       |> put_flash(:error, "Invalid email or password")

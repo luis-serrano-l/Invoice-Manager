@@ -31,8 +31,6 @@ defmodule InvoiceManagerWeb.RegisterCompanyLive do
   def handle_event("save", %{"company" => company_params}, socket) do
     case Business.create_company(company_params) do
       {:ok, company} ->
-        Process.send_after(self(), :clear_flash, 1200)
-
         Accounts.update_user(Accounts.get_user!(socket.assigns.user_id), %{
           "company_id" => company.id,
           "is_admin" => true
@@ -46,9 +44,5 @@ defmodule InvoiceManagerWeb.RegisterCompanyLive do
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
     end
-  end
-
-  def handle_info(:clear_flash, socket) do
-    {:noreply, clear_flash(socket)}
   end
 end

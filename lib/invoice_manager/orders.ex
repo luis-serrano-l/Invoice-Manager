@@ -8,6 +8,7 @@ defmodule InvoiceManager.Orders do
   alias InvoiceManager.Business.Company
   alias InvoiceManager.Inventory
   alias InvoiceManager.Orders.Invoice
+  alias InvoiceManager.Orders.Item
   alias InvoiceManager.Repo
 
   @doc """
@@ -19,24 +20,29 @@ defmodule InvoiceManager.Orders do
       [%Invoice{}, ...]
 
   """
-  def list_invoices(company_id, "personal") do
+  def list_invoices(company_id, size, offset, "incoming") do
     invoices =
       from i in Invoice,
         where: i.customer_id == ^company_id,
         where: i.sent == true,
-        order_by: i.updated_at,
-        select: i
+        select: i,
+        order_by: [desc: i.updated_at],
+        offset: ^offset,
+        limit: ^size
 
     Repo.all(invoices)
   end
 
-  def list_invoices(company_id, "customers") do
+  def list_invoices(company_id, size, offset, "outgoing") do
     invoices =
       from i in Invoice,
         where: i.company_id == ^company_id,
         where: i.sent == true,
         order_by: i.updated_at,
-        select: i
+        select: i,
+        order_by: [desc: i.updated_at],
+        offset: ^offset,
+        limit: ^size
 
     Repo.all(invoices)
   end
@@ -49,6 +55,26 @@ defmodule InvoiceManager.Orders do
         select: i
 
     Repo.all(invoices)
+  end
+
+  def count_invoices(company_id, "incoming") do
+    invoices =
+      from i in Invoice,
+        where: i.customer_id == ^company_id,
+        where: i.sent == true,
+        select: i
+
+    Repo.aggregate(invoices, :count)
+  end
+
+  def count_invoices(company_id, "outgoing") do
+    invoices =
+      from i in Invoice,
+        where: i.company_id == ^company_id,
+        where: i.sent == true,
+        select: i
+
+    Repo.aggregate(invoices, :count)
   end
 
   @doc """
@@ -66,17 +92,6 @@ defmodule InvoiceManager.Orders do
 
   """
   def get_invoice!(id), do: Repo.get!(Invoice, id)
-
-  def get_invoice(company_name, invoice_id) do
-    invoice =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.id == ^invoice_id,
-        select: invoice
-
-    Repo.one(invoice)
-  end
 
   @doc """
   Creates a invoice.
@@ -158,8 +173,6 @@ defmodule InvoiceManager.Orders do
     Invoice.changeset(invoice, attrs)
   end
 
-  alias InvoiceManager.Orders.Item
-
   @doc """
   Returns the list of items.
 
@@ -169,15 +182,12 @@ defmodule InvoiceManager.Orders do
       [%Item{}, ...]
 
   """
-  def list_items(company_name, invoice_id) do
+  def list_items(invoice_id) do
     items =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.id == ^invoice_id,
-        join: item in assoc(invoice, :items),
-        select: item,
-        order_by: item.inserted_at
+      from i in Item,
+        where: i.invoice_id == ^invoice_id,
+        select: i,
+        order_by: i.inserted_at
 
     Repo.all(items)
   end
@@ -198,19 +208,6 @@ defmodule InvoiceManager.Orders do
   """
   def get_item!(id), do: Repo.get!(Item, id)
 
-  def get_item(company_name, invoice_id, item_id) do
-    item =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.id == ^invoice_id,
-        join: item in assoc(invoice, :items),
-        where: item.id == ^item_id,
-        select: item
-
-    Repo.one(item)
-  end
-
   @doc """
   Creates a item.
 
@@ -223,15 +220,8 @@ defmodule InvoiceManager.Orders do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_item(product_id, company_name, invoice_id, attrs \\ %{}) do
-    invoice =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.id == ^invoice_id,
-        select: invoice
-
-    invoice = Repo.one(invoice)
+  def create_item(product_id, invoice_id, attrs \\ %{}) do
+    invoice = get_invoice!(invoice_id)
     item = Ecto.build_assoc(invoice, :items, product_id: product_id)
 
     item
@@ -258,7 +248,7 @@ defmodule InvoiceManager.Orders do
     |> Repo.update()
   end
 
-  def update_items_and_products(company_name, invoice_id, items) do
+  def update_items_and_products(invoice_id, items) do
     Enum.map(items, fn item ->
       product = Inventory.get_product!(item.product_id)
 
@@ -267,11 +257,10 @@ defmodule InvoiceManager.Orders do
           # We will create the items that where not saved (dont have an id)
           create_item(
             item.product_id,
-            company_name,
             invoice_id,
             %{
-              "fixed_name" => product.name,
-              "fixed_price" => product.price,
+              "name" => product.name,
+              "price" => product.price,
               "quantity" => item.quantity
             }
           )
@@ -282,12 +271,12 @@ defmodule InvoiceManager.Orders do
           })
 
         id ->
-          saved_item = get_item(company_name, invoice_id, id)
+          saved_item = get_item!(id)
           quantity_diff = item.quantity - saved_item.quantity
 
           update_item(saved_item, %{
-            "fixed_name" => product.name,
-            "fixed_price" => product.price,
+            "name" => product.name,
+            "price" => product.price,
             "quantity" => item.quantity
           })
 
@@ -309,7 +298,7 @@ defmodule InvoiceManager.Orders do
   defp get_product_name_and_price(products, product_id) do
     product = Enum.find(products, &(&1.id == product_id))
     %{name: name, price: price} = product
-    %{"fixed_name" => name, "fixed_price" => price}
+    %{"name" => name, "price" => price}
   end
 
   @doc """

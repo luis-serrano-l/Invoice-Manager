@@ -6,9 +6,9 @@ defmodule InvoiceManager.Repo.Migrations.CreateInvoices do
       add :invoice_number, :integer
       add :billing_date, :date
       add :operation_date, :date
-      add :tax_rate, :decimal
-      add :discount, :decimal
-      add :total, :decimal
+      add :tax_rate, :float
+      add :discount, :float
+      add :total, :float
       add :extra_info, :string
       add :sent, :boolean
       add :company_id, references(:companies, on_delete: :nothing)
