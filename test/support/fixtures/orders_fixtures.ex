@@ -14,7 +14,6 @@ defmodule InvoiceManager.OrdersFixtures do
         billing_date: ~D[2023-11-22],
         discount: "120.5",
         extra_info: "some extra_info",
-        invoice_number: 42,
         operation_date: ~D[2023-11-22],
         tax_rate: "120.5",
         total: "120.5"

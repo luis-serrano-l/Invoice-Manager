@@ -12,7 +12,7 @@
           focus:cursor-auto bg-teal-50 hover:bg-teal-200 hover:cursor-pointer
           """}
         >
-          <%= invoice.invoice_number %>
+          <%= invoice.id %>
         </span>
       </:col>
       <:col :let={invoice} :if={@role == "incoming"} label="Company">

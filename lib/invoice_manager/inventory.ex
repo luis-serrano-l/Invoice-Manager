@@ -3,8 +3,10 @@ defmodule InvoiceManager.Inventory do
   The Inventory context.
   """
 
+  import Ecto.Changeset
   import Ecto.Query, warn: false
 
+  alias InvoiceManager.Business
   alias InvoiceManager.Inventory.Product
   alias InvoiceManager.Repo
 
@@ -91,6 +93,30 @@ defmodule InvoiceManager.Inventory do
   def update_product(%Product{} = product, attrs) do
     product
     |> Product.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def update_each_product_stock(company_id, items) do
+    ids_for_update = Enum.map(items, & &1.product_id)
+
+    ids_not_to_change_stock =
+      from p in Product,
+        where: p.company_id == ^company_id,
+        where: p.id not in ^ids_for_update,
+        select: %{id: p.id}
+
+    ids_not_to_change_stock = Repo.all(ids_not_to_change_stock)
+
+    changed_stock =
+      Enum.map(items, fn item ->
+        product = get_product!(item.product_id)
+        %{id: product.id, stock: product.stock - item.quantity}
+      end)
+
+    Business.get_company!(company_id)
+    |> Repo.preload(:products)
+    |> cast(%{products: ids_not_to_change_stock ++ changed_stock}, [])
+    |> cast_assoc(:products)
     |> Repo.update()
   end
 

@@ -7,7 +7,7 @@ defmodule InvoiceManagerWeb.MyProductsLive do
   alias InvoiceManager.Inventory
   alias InvoiceManager.Inventory.Product
 
-  @size 3
+  @size 20
 
   def mount(%{"company_name" => _company_name}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])

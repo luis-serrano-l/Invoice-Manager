@@ -12,7 +12,6 @@ defmodule InvoiceManager.OrdersTest do
       billing_date: nil,
       discount: nil,
       extra_info: nil,
-      invoice_number: nil,
       operation_date: nil,
       tax_rate: nil,
       total: nil
@@ -33,7 +32,6 @@ defmodule InvoiceManager.OrdersTest do
         billing_date: ~D[2023-11-22],
         discount: "120.5",
         extra_info: "some extra_info",
-        invoice_number: 42,
         operation_date: ~D[2023-11-22],
         tax_rate: "120.5",
         total: "120.5"
@@ -43,7 +41,6 @@ defmodule InvoiceManager.OrdersTest do
       assert invoice.billing_date == ~D[2023-11-22]
       assert invoice.discount == 120.5
       assert invoice.extra_info == "some extra_info"
-      assert invoice.invoice_number == 42
       assert invoice.operation_date == ~D[2023-11-22]
       assert invoice.tax_rate == 120.5
       assert invoice.total == 120.5
@@ -60,7 +57,6 @@ defmodule InvoiceManager.OrdersTest do
         billing_date: ~D[2023-11-23],
         discount: "456.7",
         extra_info: "some updated extra_info",
-        invoice_number: 43,
         operation_date: ~D[2023-11-23],
         tax_rate: "456.7",
         total: "456.7"
@@ -70,7 +66,6 @@ defmodule InvoiceManager.OrdersTest do
       assert invoice.billing_date == ~D[2023-11-23]
       assert invoice.discount == 456.7
       assert invoice.extra_info == "some updated extra_info"
-      assert invoice.invoice_number == 43
       assert invoice.operation_date == ~D[2023-11-23]
       assert invoice.tax_rate == 456.7
       assert invoice.total == 456.7

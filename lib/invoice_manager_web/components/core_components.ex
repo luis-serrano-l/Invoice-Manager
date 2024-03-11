@@ -148,8 +148,8 @@ defmodule InvoiceManagerWeb.CoreComponents do
     <.flash kind={:error} flash={@flash} />
     <.flash
       id="disconnected"
-      kind={:error}
-      title="We can't find the internet"
+      kind={:info}
+      title="Reconnecting"
       phx-disconnected={show("#disconnected")}
       phx-connected={hide("#disconnected")}
       hidden

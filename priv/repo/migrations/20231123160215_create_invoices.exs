@@ -3,7 +3,6 @@ defmodule InvoiceManager.Repo.Migrations.CreateInvoices do
 
   def change do
     create table(:invoices) do
-      add :invoice_number, :integer
       add :billing_date, :date
       add :operation_date, :date
       add :tax_rate, :float

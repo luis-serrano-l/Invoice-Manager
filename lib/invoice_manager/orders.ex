@@ -4,6 +4,7 @@ defmodule InvoiceManager.Orders do
   """
 
   import Ecto.Query, warn: false
+  import Ecto.Changeset
 
   alias InvoiceManager.Business.Company
   alias InvoiceManager.Inventory
@@ -135,6 +136,30 @@ defmodule InvoiceManager.Orders do
     |> Repo.update()
   end
 
+  def update_full_invoice(id, items, attrs) do
+    params = %{items: item_params(items)}
+
+    get_invoice!(id)
+    |> Repo.preload(:items)
+    |> cast(params, [])
+    |> cast_assoc(:items)
+    |> Invoice.changeset(attrs)
+    |> Repo.update()
+  end
+
+  defp item_params(items) do
+    Enum.map(items, fn item ->
+      if Map.get(item, :id),
+        do: %{id: item.id, name: item.name, price: item.price, quantity: item.quantity},
+        else: %{
+          product_id: item.product_id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        }
+    end)
+  end
+
   def temporary_update_invoice(%Invoice{} = invoice, attrs) do
     invoice
     |> Invoice.changeset(attrs)
@@ -187,7 +212,7 @@ defmodule InvoiceManager.Orders do
       from i in Item,
         where: i.invoice_id == ^invoice_id,
         select: i,
-        order_by: i.inserted_at
+        order_by: [desc: i.inserted_at]
 
     Repo.all(items)
   end
@@ -245,60 +270,19 @@ defmodule InvoiceManager.Orders do
   def update_item(%Item{} = item, attrs) do
     item
     |> Item.changeset(attrs)
-    |> Repo.update()
+    |> Repo.update!()
   end
 
-  def update_items_and_products(invoice_id, items) do
+  def update_item_price_and_name(items) do
     Enum.map(items, fn item ->
       product = Inventory.get_product!(item.product_id)
 
-      case Map.get(item, :id) do
-        nil ->
-          # We will create the items that where not saved (dont have an id)
-          create_item(
-            item.product_id,
-            invoice_id,
-            %{
-              "name" => product.name,
-              "price" => product.price,
-              "quantity" => item.quantity
-            }
-          )
-
-          # Once the item is saved, we remove the corresponding stock
-          Inventory.update_product(product, %{
-            "stock" => product.stock - item.quantity
-          })
-
-        id ->
-          saved_item = get_item!(id)
-          quantity_diff = item.quantity - saved_item.quantity
-
-          update_item(saved_item, %{
-            "name" => product.name,
-            "price" => product.price,
-            "quantity" => item.quantity
-          })
-
-          Inventory.update_product(product, %{
-            "stock" => product.stock - quantity_diff
-          })
-      end
+      update_item(item, %{
+        "name" => product.name,
+        "price" => product.price,
+        "quantity" => item.quantity
+      })
     end)
-  end
-
-  def fix_items_price_and_name(items, products) do
-    items
-    |> Enum.map(fn item ->
-      item
-      |> update_item(get_product_name_and_price(products, item.product_id))
-    end)
-  end
-
-  defp get_product_name_and_price(products, product_id) do
-    product = Enum.find(products, &(&1.id == product_id))
-    %{name: name, price: price} = product
-    %{"name" => name, "price" => price}
   end
 
   @doc """

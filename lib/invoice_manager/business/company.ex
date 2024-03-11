@@ -13,7 +13,7 @@ defmodule InvoiceManager.Business.Company do
     field :fiscal_number, :string
     field :name, :string
     has_many :users, User
-    has_many :products, Product
+    has_many :products, Product, on_replace: :delete
     has_many :invoices, Invoice
     has_many :items, through: [:invoices, :items]
 
