@@ -8,7 +8,14 @@ defmodule InvoiceManager.OrdersTest do
 
     import InvoiceManager.OrdersFixtures
 
-    @invalid_attrs %{billing_date: nil, discount: nil, extra_info: nil, invoice_number: nil, operation_date: nil, tax_rate: nil, total: nil}
+    @invalid_attrs %{
+      billing_date: nil,
+      discount: nil,
+      extra_info: nil,
+      operation_date: nil,
+      tax_rate: nil,
+      total: nil
+    }
 
     test "list_invoices/0 returns all invoices" do
       invoice = invoice_fixture()
@@ -21,16 +28,22 @@ defmodule InvoiceManager.OrdersTest do
     end
 
     test "create_invoice/1 with valid data creates a invoice" do
-      valid_attrs = %{billing_date: ~D[2023-11-22], discount: "120.5", extra_info: "some extra_info", invoice_number: 42, operation_date: ~D[2023-11-22], tax_rate: "120.5", total: "120.5"}
+      valid_attrs = %{
+        billing_date: ~D[2023-11-22],
+        discount: "120.5",
+        extra_info: "some extra_info",
+        operation_date: ~D[2023-11-22],
+        tax_rate: "120.5",
+        total: "120.5"
+      }
 
       assert {:ok, %Invoice{} = invoice} = Orders.create_invoice(valid_attrs)
       assert invoice.billing_date == ~D[2023-11-22]
-      assert invoice.discount == Decimal.new("120.5")
+      assert invoice.discount == 120.5
       assert invoice.extra_info == "some extra_info"
-      assert invoice.invoice_number == 42
       assert invoice.operation_date == ~D[2023-11-22]
-      assert invoice.tax_rate == Decimal.new("120.5")
-      assert invoice.total == Decimal.new("120.5")
+      assert invoice.tax_rate == 120.5
+      assert invoice.total == 120.5
     end
 
     test "create_invoice/1 with invalid data returns error changeset" do
@@ -39,16 +52,23 @@ defmodule InvoiceManager.OrdersTest do
 
     test "update_invoice/2 with valid data updates the invoice" do
       invoice = invoice_fixture()
-      update_attrs = %{billing_date: ~D[2023-11-23], discount: "456.7", extra_info: "some updated extra_info", invoice_number: 43, operation_date: ~D[2023-11-23], tax_rate: "456.7", total: "456.7"}
+
+      update_attrs = %{
+        billing_date: ~D[2023-11-23],
+        discount: "456.7",
+        extra_info: "some updated extra_info",
+        operation_date: ~D[2023-11-23],
+        tax_rate: "456.7",
+        total: "456.7"
+      }
 
       assert {:ok, %Invoice{} = invoice} = Orders.update_invoice(invoice, update_attrs)
       assert invoice.billing_date == ~D[2023-11-23]
-      assert invoice.discount == Decimal.new("456.7")
+      assert invoice.discount == 456.7
       assert invoice.extra_info == "some updated extra_info"
-      assert invoice.invoice_number == 43
       assert invoice.operation_date == ~D[2023-11-23]
-      assert invoice.tax_rate == Decimal.new("456.7")
-      assert invoice.total == Decimal.new("456.7")
+      assert invoice.tax_rate == 456.7
+      assert invoice.total == 456.7
     end
 
     test "update_invoice/2 with invalid data returns error changeset" do

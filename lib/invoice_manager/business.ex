@@ -4,9 +4,9 @@ defmodule InvoiceManager.Business do
   """
 
   import Ecto.Query, warn: false
-  alias InvoiceManager.Repo
 
   alias InvoiceManager.Business.Company
+  alias InvoiceManager.Repo
 
   @doc """
   Returns the list of companies.

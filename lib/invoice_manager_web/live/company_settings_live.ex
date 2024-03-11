@@ -1,8 +1,9 @@
 defmodule InvoiceManagerWeb.CompanySettingsLive do
-  alias InvoiceManager.Accounts
-  alias InvoiceManager.Business.Company
-  alias InvoiceManager.Business
   use InvoiceManagerWeb, :live_view
+
+  alias InvoiceManager.Accounts
+  alias InvoiceManager.Business
+  alias InvoiceManager.Business.Company
 
   def mount(%{"company_name" => _company_name}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
@@ -12,7 +13,7 @@ defmodule InvoiceManagerWeb.CompanySettingsLive do
     {:ok,
      socket
      |> assign(form: to_form(company_changeset))
-     |> assign(company: company)
+     |> assign(company_id: company.id)
      |> assign(company_name: company.name)
      |> assign(user_is_admin: user.is_admin)}
   end
@@ -28,11 +29,11 @@ defmodule InvoiceManagerWeb.CompanySettingsLive do
   end
 
   def handle_event("save", %{"company" => company_params}, socket) do
-    case Business.update_company(socket.assigns.company, company_params) do
+    company = Business.get_company!(socket.assigns.company_id)
+
+    case Business.update_company(company, company_params) do
       {:ok, company} ->
         company_changeset = Business.change_company(company)
-
-        Process.send_after(self(), :clear_flash, 1200)
 
         {:noreply,
          socket

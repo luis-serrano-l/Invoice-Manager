@@ -3,8 +3,8 @@ defmodule InvoiceManager.Business.Company do
   import Ecto.Changeset
 
   alias InvoiceManager.Accounts.User
-  alias InvoiceManager.Orders.Invoice
   alias InvoiceManager.Inventory.Product
+  alias InvoiceManager.Orders.Invoice
 
   schema "companies" do
     field :address, :string
@@ -13,7 +13,7 @@ defmodule InvoiceManager.Business.Company do
     field :fiscal_number, :string
     field :name, :string
     has_many :users, User
-    has_many :products, Product
+    has_many :products, Product, on_replace: :delete
     has_many :invoices, Invoice
     has_many :items, through: [:invoices, :items]
 
@@ -33,5 +33,6 @@ defmodule InvoiceManager.Business.Company do
     )
     |> validate_length(:contact_email, max: 160)
     |> unique_constraint(:name)
+    |> unique_constraint(:fiscal_number)
   end
 end

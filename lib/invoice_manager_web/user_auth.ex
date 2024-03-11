@@ -153,8 +153,6 @@ defmodule InvoiceManagerWeb.UserAuth do
     if socket.assigns.current_user do
       {:cont, socket}
     else
-      Process.send_after(self(), :clear_flash, 1200)
-
       socket =
         socket
         |> Phoenix.LiveView.put_flash(:error, "You must log in to access this page.")
@@ -205,8 +203,6 @@ defmodule InvoiceManagerWeb.UserAuth do
     if conn.assigns[:current_user] do
       conn
     else
-      Process.send_after(self(), :clear_flash, 900)
-
       conn
       |> put_flash(:error, "You must log in to access this page.")
       |> maybe_store_return_to()

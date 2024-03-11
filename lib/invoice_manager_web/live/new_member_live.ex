@@ -1,8 +1,9 @@
 defmodule InvoiceManagerWeb.NewMemberLive do
-  alias InvoiceManager.Business
+  use InvoiceManagerWeb, :live_view
+
   alias InvoiceManager.Accounts
   alias InvoiceManager.Accounts.User
-  use InvoiceManagerWeb, :live_view
+  alias InvoiceManager.Business
 
   def mount(%{"company_name" => _company_name}, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
@@ -57,9 +58,7 @@ defmodule InvoiceManagerWeb.NewMemberLive do
   end
 
   def handle_event("validate", %{"user" => user_params}, socket) do
-    changeset =
-      Accounts.change_user_registration(%User{}, user_params)
-      |> IO.inspect(label: "PARAMS")
+    changeset = Accounts.change_user_registration(%User{}, user_params)
 
     {:noreply, assign_form(socket, Map.put(changeset, :action, :validate))}
   end

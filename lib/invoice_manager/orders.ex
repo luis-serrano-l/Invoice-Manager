@@ -4,11 +4,13 @@ defmodule InvoiceManager.Orders do
   """
 
   import Ecto.Query, warn: false
-  alias InvoiceManager.Inventory
-  alias InvoiceManager.Business.Company
-  alias InvoiceManager.Repo
+  import Ecto.Changeset
 
+  alias InvoiceManager.Business.Company
+  alias InvoiceManager.Inventory
   alias InvoiceManager.Orders.Invoice
+  alias InvoiceManager.Orders.Item
+  alias InvoiceManager.Repo
 
   @doc """
   Returns the list of invoices.
@@ -19,41 +21,61 @@ defmodule InvoiceManager.Orders do
       [%Invoice{}, ...]
 
   """
-  def list_invoices(company_name, "personal") do
+  def list_invoices(company_id, size, offset, "incoming") do
     invoices =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.customer_id == company.id,
-        where: invoice.sent == true,
-        order_by: invoice.updated_at,
-        select: invoice
+      from i in Invoice,
+        where: i.customer_id == ^company_id,
+        where: i.sent == true,
+        select: i,
+        order_by: [desc: i.updated_at],
+        offset: ^offset,
+        limit: ^size
 
     Repo.all(invoices)
   end
 
-  def list_invoices(company_name, "customers") do
+  def list_invoices(company_id, size, offset, "outgoing") do
     invoices =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.company_id == company.id,
-        where: invoice.sent == true,
-        order_by: invoice.updated_at,
-        select: invoice
+      from i in Invoice,
+        where: i.company_id == ^company_id,
+        where: i.sent == true,
+        order_by: i.updated_at,
+        select: i,
+        order_by: [desc: i.updated_at],
+        offset: ^offset,
+        limit: ^size
 
     Repo.all(invoices)
   end
 
-  def list_unsent_invoices(company_name) do
-    invoice =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.sent == false,
-        select: invoice
+  def list_unsent_invoices(company_id) do
+    invoices =
+      from i in Invoice,
+        where: i.company_id == ^company_id,
+        where: i.sent == false,
+        select: i
 
-    Repo.all(invoice)
+    Repo.all(invoices)
+  end
+
+  def count_invoices(company_id, "incoming") do
+    invoices =
+      from i in Invoice,
+        where: i.customer_id == ^company_id,
+        where: i.sent == true,
+        select: i
+
+    Repo.aggregate(invoices, :count)
+  end
+
+  def count_invoices(company_id, "outgoing") do
+    invoices =
+      from i in Invoice,
+        where: i.company_id == ^company_id,
+        where: i.sent == true,
+        select: i
+
+    Repo.aggregate(invoices, :count)
   end
 
   @doc """
@@ -71,17 +93,6 @@ defmodule InvoiceManager.Orders do
 
   """
   def get_invoice!(id), do: Repo.get!(Invoice, id)
-
-  def get_invoice(company_name, invoice_id) do
-    invoice =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.id == ^invoice_id,
-        select: invoice
-
-    Repo.one(invoice)
-  end
 
   @doc """
   Creates a invoice.
@@ -125,6 +136,30 @@ defmodule InvoiceManager.Orders do
     |> Repo.update()
   end
 
+  def update_full_invoice(id, items, attrs) do
+    params = %{items: item_params(items)}
+
+    get_invoice!(id)
+    |> Repo.preload(:items)
+    |> cast(params, [])
+    |> cast_assoc(:items)
+    |> Invoice.changeset(attrs)
+    |> Repo.update()
+  end
+
+  defp item_params(items) do
+    Enum.map(items, fn item ->
+      if Map.get(item, :id),
+        do: %{id: item.id, name: item.name, price: item.price, quantity: item.quantity},
+        else: %{
+          product_id: item.product_id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        }
+    end)
+  end
+
   def temporary_update_invoice(%Invoice{} = invoice, attrs) do
     invoice
     |> Invoice.changeset(attrs)
@@ -163,8 +198,6 @@ defmodule InvoiceManager.Orders do
     Invoice.changeset(invoice, attrs)
   end
 
-  alias InvoiceManager.Orders.Item
-
   @doc """
   Returns the list of items.
 
@@ -174,15 +207,12 @@ defmodule InvoiceManager.Orders do
       [%Item{}, ...]
 
   """
-  def list_items(company_name, invoice_id) do
+  def list_items(invoice_id) do
     items =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.id == ^invoice_id,
-        join: item in assoc(invoice, :items),
-        select: item,
-        order_by: item.inserted_at
+      from i in Item,
+        where: i.invoice_id == ^invoice_id,
+        select: i,
+        order_by: [desc: i.inserted_at]
 
     Repo.all(items)
   end
@@ -203,19 +233,6 @@ defmodule InvoiceManager.Orders do
   """
   def get_item!(id), do: Repo.get!(Item, id)
 
-  def get_item(company_name, invoice_id, item_id) do
-    item =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.id == ^invoice_id,
-        join: item in assoc(invoice, :items),
-        where: item.id == ^item_id,
-        select: item
-
-    Repo.one(item)
-  end
-
   @doc """
   Creates a item.
 
@@ -228,15 +245,8 @@ defmodule InvoiceManager.Orders do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_item(product_id, company_name, invoice_id, attrs \\ %{}) do
-    invoice =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: invoice in assoc(company, :invoices),
-        where: invoice.id == ^invoice_id,
-        select: invoice
-
-    invoice = Repo.one(invoice)
+  def create_item(product_id, invoice_id, attrs \\ %{}) do
+    invoice = get_invoice!(invoice_id)
     item = Ecto.build_assoc(invoice, :items, product_id: product_id)
 
     item
@@ -260,61 +270,19 @@ defmodule InvoiceManager.Orders do
   def update_item(%Item{} = item, attrs) do
     item
     |> Item.changeset(attrs)
-    |> Repo.update()
+    |> Repo.update!()
   end
 
-  def update_items_and_products(company_name, invoice_id, items) do
+  def update_item_price_and_name(items) do
     Enum.map(items, fn item ->
-      product = Inventory.get_product(company_name, item.product_id)
+      product = Inventory.get_product!(item.product_id)
 
-      case Map.get(item, :id) do
-        nil ->
-          # We will create the items that where not saved (dont have an id)
-          create_item(
-            item.product_id,
-            company_name,
-            invoice_id,
-            %{
-              "fixed_name" => product.name,
-              "fixed_price" => product.price,
-              "quantity" => item.quantity
-            }
-          )
-
-          # Once the item is saved, we remove the corresponding stock
-          Inventory.update_product(product, %{
-            "stock" => product.stock - item.quantity
-          })
-
-        id ->
-          saved_item = get_item(company_name, invoice_id, id)
-          quantity_diff = item.quantity - saved_item.quantity
-
-          update_item(saved_item, %{
-            "fixed_name" => product.name,
-            "fixed_price" => product.price,
-            "quantity" => item.quantity
-          })
-
-          Inventory.update_product(product, %{
-            "stock" => product.stock - quantity_diff
-          })
-      end
+      update_item(item, %{
+        "name" => product.name,
+        "price" => product.price,
+        "quantity" => item.quantity
+      })
     end)
-  end
-
-  def fix_items_price_and_name(items, products) do
-    items
-    |> Enum.map(fn item ->
-      item
-      |> update_item(get_product_name_and_price(products, item.product_id))
-    end)
-  end
-
-  defp get_product_name_and_price(products, product_id) do
-    product = Enum.find(products, &(&1.id == product_id))
-    %{name: name, price: price} = product
-    %{"fixed_name" => name, "fixed_price" => price}
   end
 
   @doc """

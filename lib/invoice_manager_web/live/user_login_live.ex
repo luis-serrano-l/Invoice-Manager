@@ -36,7 +36,6 @@ defmodule InvoiceManagerWeb.UserLoginLive do
   end
 
   def mount(_params, _session, socket) do
-    Process.send_after(self(), :clear_flash, 1100)
     email = live_flash(socket.assigns.flash, :email)
     form = to_form(%{"email" => email}, as: "user")
     {:ok, assign(socket, form: form), temporary_assigns: [form: form]}

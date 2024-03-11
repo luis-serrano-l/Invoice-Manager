@@ -1,85 +1,47 @@
 defmodule InvoiceManagerWeb.ViewInvoiceLive do
+  use InvoiceManagerWeb, :live_view
+  import InvoiceManager.Utils
+
   alias InvoiceManager.Accounts
   alias InvoiceManager.Business
   alias InvoiceManager.Orders
-  use InvoiceManagerWeb, :live_view
 
   def mount(
-        %{"company_name" => _company_name, "role" => _role, "invoice_id" => invoice_id},
+        %{"role" => role, "invoice_id" => invoice_id},
         session,
         socket
       ) do
     user = Accounts.get_user_by_session_token(session["user_token"])
-    company = Business.get_company!(user.company_id)
-    company_name = company.name
     invoice_id = String.to_integer(invoice_id)
-    invoice = Orders.get_invoice(company_name, invoice_id)
-    items = Orders.list_items(company_name, invoice_id)
-    value = calculate_value(items)
-    tax = (value * (Decimal.to_float(invoice.tax_rate) / 100)) |> Float.round(2)
+    invoice = Orders.get_invoice!(invoice_id)
 
-    socket =
-      assign(socket,
-        invoice: invoice,
-        items: items,
-        value: value,
-        tax: tax,
-        company_name: company_name,
-        user_is_admin: user.is_admin
-      )
+    if has_access?(role, invoice, user.company_id) do
+      items = Orders.list_items(invoice_id)
 
-    {:ok, socket}
-  end
+      socket =
+        assign(socket,
+          invoice: invoice,
+          items: items,
+          costs: get_costs(items, invoice.tax_rate, invoice.discount),
+          customer: Business.get_company!(invoice.customer_id),
+          company: Business.get_company!(invoice.company_id),
+          user_is_admin: user.is_admin
+        )
 
-  defp get_company_name(company_id), do: Business.get_company_name(company_id)
-
-  defp get_company_address(company_id), do: Business.get_company!(company_id).address
-
-  defp get_company_fiscal_number(company_id), do: Business.get_company!(company_id).fiscal_number
-
-  defp get_company_contact_email(company_id),
-    do: Business.get_company!(company_id).contact_email
-
-  defp get_company_contact_phone(company_id),
-    do: Business.get_company!(company_id).contact_phone
-
-  defp calculate_value(items) do
-    items
-    |> Enum.reduce(0, fn item, acc ->
-      item.quantity * Decimal.to_float(item.fixed_price) +
-        acc
-    end)
-    |> Float.round(2)
-  end
-
-  defp calculate_item_value(quantity, price) do
-    (quantity *
-       Decimal.to_float(price))
-    |> Float.round(2)
-  end
-
-  defp to_eur(number) when is_float(number) do
-    number = Float.to_string(number)
-
-    if Regex.match?(~r/^\d+\.\d$/, number) do
-      number <> "0 €"
+      {:ok, socket}
     else
-      number <> " €"
+      {:noreply,
+       socket
+       |> redirect(to: ~p"/invoice_manager/browser/#{role}")
+       |> put_flash(:error, "Access denied")}
     end
   end
 
-  defp to_eur(number) do
-    number = Decimal.to_string(number)
+  defp has_access?("outgoing", invoice, my_company_id) do
+    invoice.company_id == my_company_id
+  end
 
-    cond do
-      Regex.match?(~r/^\d+\.\d$/, number) ->
-        number <> "0 €"
-
-      Regex.match?(~r/^\d+$/, number) ->
-        number <> ".00 €"
-
-      true ->
-        number <> " €"
-    end
+  defp has_access?("incoming", invoice, my_company_id) do
+    invoice.customer_id == my_company_id and invoice.sent
   end
 end

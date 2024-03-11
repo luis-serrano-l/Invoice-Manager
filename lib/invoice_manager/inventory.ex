@@ -3,45 +3,42 @@ defmodule InvoiceManager.Inventory do
   The Inventory context.
   """
 
+  import Ecto.Changeset
   import Ecto.Query, warn: false
-  alias InvoiceManager.Business.Company
-  alias InvoiceManager.Repo
-  alias InvoiceManager.Inventory.Product
 
-  # @spec list_products(any(), integer(), integer()) :: any()
-  def list_products(company_name, size, offset) do
+  alias InvoiceManager.Business
+  alias InvoiceManager.Inventory.Product
+  alias InvoiceManager.Repo
+
+  def list_products(company_id, size, offset) do
     products =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: product in assoc(company, :products),
-        select: product,
-        order_by: [desc: product.updated_at],
+      from p in Product,
+        where: p.company_id == ^company_id,
+        select: p,
+        order_by: [desc: p.updated_at],
         offset: ^offset,
         limit: ^size
 
     Repo.all(products)
   end
 
-  def search_products(company_name, product_string) do
+  def search_products(company_id, product_string) do
     products =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: product in assoc(company, :products),
-        select: product,
-        where: ilike(product.name, ^"#{product_string}%")
+      from p in Product,
+        where: p.company_id == ^company_id,
+        select: p,
+        where: ilike(p.name, ^"#{product_string}%")
 
     Repo.all(products)
   end
 
-  def length_products(company_name) do
+  def count_products(company_id) do
     products =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: product in assoc(company, :products),
-        select: product
+      from p in Product,
+        where: p.company_id == ^company_id,
+        select: p
 
-    Repo.all(products)
-    |> length()
+    Repo.aggregate(products, :count)
   end
 
   @doc """
@@ -60,17 +57,6 @@ defmodule InvoiceManager.Inventory do
   """
   def get_product!(id), do: Repo.get!(Product, id)
 
-  def get_product(company_name, id) do
-    product =
-      from company in Company,
-        where: company.name == ^company_name,
-        join: product in assoc(company, :products),
-        where: product.id == ^id,
-        select: product
-
-    Repo.one(product)
-  end
-
   @doc """
   Creates a product.
 
@@ -83,9 +69,8 @@ defmodule InvoiceManager.Inventory do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_product(company_name, attrs) do
-    company = Repo.get_by(Company, name: company_name)
-    product_params = Map.put(attrs, "company_id", company.id)
+  def create_product(company_id, attrs) do
+    product_params = Map.put(attrs, "company_id", company_id)
 
     %Product{}
     |> Product.changeset(product_params)
@@ -108,6 +93,30 @@ defmodule InvoiceManager.Inventory do
   def update_product(%Product{} = product, attrs) do
     product
     |> Product.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def update_each_product_stock(company_id, items) do
+    ids_for_update = Enum.map(items, & &1.product_id)
+
+    ids_not_to_change_stock =
+      from p in Product,
+        where: p.company_id == ^company_id,
+        where: p.id not in ^ids_for_update,
+        select: %{id: p.id}
+
+    ids_not_to_change_stock = Repo.all(ids_not_to_change_stock)
+
+    changed_stock =
+      Enum.map(items, fn item ->
+        product = get_product!(item.product_id)
+        %{id: product.id, stock: product.stock - item.quantity}
+      end)
+
+    Business.get_company!(company_id)
+    |> Repo.preload(:products)
+    |> cast(%{products: ids_not_to_change_stock ++ changed_stock}, [])
+    |> cast_assoc(:products)
     |> Repo.update()
   end
 
