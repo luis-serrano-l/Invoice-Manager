@@ -18,6 +18,28 @@ defmodule InvoiceManagerWeb.CompanySettingsLive do
      |> assign(user_is_admin: user.is_admin)}
   end
 
+  def render(assigns) do
+    ~H"""
+    <div class="flex">
+      <InvoiceManagerWeb.Live.Show.invoice_navigation
+        company_name={@company_name}
+        user_is_admin={@user_is_admin}
+      />
+      <div class="flex-grow mx-auto max-w-sm">
+        <.simple_form for={@form} phx-change="validate" phx-submit="save">
+          <.input field={@form[:address]} type="text" label="Address" required />
+          <.input field={@form[:contact_email]} type="text" label="Contact Email" required />
+          <.input field={@form[:contact_phone]} type="text" label="Contact Phone" required />
+          <.input field={@form[:fiscal_number]} type="text" label="Fiscal Number" required />
+          <:actions>
+            <.button id="submit" phx-disable-with="Saving...">Save</.button>
+          </:actions>
+        </.simple_form>
+      </div>
+    </div>
+    """
+  end
+
   def handle_event("validate", %{"company" => params}, socket) do
     form =
       %Company{}

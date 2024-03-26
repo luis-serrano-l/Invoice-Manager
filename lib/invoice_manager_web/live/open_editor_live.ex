@@ -63,5 +63,6 @@ defmodule InvoiceManagerWeb.OpenEditorLive do
      |> assign(invoices: Orders.list_unsent_invoices(socket.assigns.company_id))}
   end
 
+  @spec get_company_name(integer()) :: struct()
   defp get_company_name(company_id), do: Business.get_company_name(company_id)
 end

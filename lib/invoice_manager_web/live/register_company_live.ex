@@ -18,6 +18,21 @@ defmodule InvoiceManagerWeb.RegisterCompanyLive do
     {:ok, socket}
   end
 
+  def render(assigns) do
+    ~H"""
+    <.simple_form for={@form} phx-change="validate" phx-submit="save">
+      <.input field={@form[:address]} type="text" label="Address" required />
+      <.input field={@form[:contact_email]} type="text" label="Contact Email" required />
+      <.input field={@form[:contact_phone]} type="text" label="Contact Phone" required />
+      <.input field={@form[:fiscal_number]} type="text" label="Fiscal Number" required />
+      <.input field={@form[:name]} type="text" label="Name" required />
+      <:actions>
+        <.button id="submit" phx-disable-with="Saving...">Save</.button>
+      </:actions>
+    </.simple_form>
+    """
+  end
+
   def handle_event("validate", %{"company" => params}, socket) do
     form =
       %Company{}

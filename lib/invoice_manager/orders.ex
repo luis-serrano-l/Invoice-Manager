@@ -4,7 +4,6 @@ defmodule InvoiceManager.Orders do
   """
 
   import Ecto.Query, warn: false
-  import Ecto.Changeset
 
   alias InvoiceManager.Business.Company
   alias InvoiceManager.Inventory
@@ -21,6 +20,7 @@ defmodule InvoiceManager.Orders do
       [%Invoice{}, ...]
 
   """
+  @spec list_invoices(integer(), integer(), integer(), String.t()) :: list(struct())
   def list_invoices(company_id, size, offset, "incoming") do
     invoices =
       from i in Invoice,
@@ -136,17 +136,17 @@ defmodule InvoiceManager.Orders do
     |> Repo.update()
   end
 
+  @spec update_full_invoice(integer(), [struct()], map()) :: tuple()
   def update_full_invoice(id, items, attrs) do
     params = %{items: item_params(items)}
 
     get_invoice!(id)
     |> Repo.preload(:items)
-    |> cast(params, [])
-    |> cast_assoc(:items)
-    |> Invoice.changeset(attrs)
+    |> Invoice.full_changeset(attrs, params)
     |> Repo.update()
   end
 
+  @spec item_params([struct()]) :: [map()]
   defp item_params(items) do
     Enum.map(items, fn item ->
       if Map.get(item, :id),
@@ -158,12 +158,6 @@ defmodule InvoiceManager.Orders do
           quantity: item.quantity
         }
     end)
-  end
-
-  def temporary_update_invoice(%Invoice{} = invoice, attrs) do
-    invoice
-    |> Invoice.changeset(attrs)
-    |> Repo.update()
   end
 
   @doc """
@@ -245,6 +239,7 @@ defmodule InvoiceManager.Orders do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_item(integer(), integer(), map()) :: tuple()
   def create_item(product_id, invoice_id, attrs \\ %{}) do
     invoice = get_invoice!(invoice_id)
     item = Ecto.build_assoc(invoice, :items, product_id: product_id)
@@ -273,6 +268,7 @@ defmodule InvoiceManager.Orders do
     |> Repo.update!()
   end
 
+  @spec update_item_price_and_name([struct()]) :: [map()]
   def update_item_price_and_name(items) do
     Enum.map(items, fn item ->
       product = Inventory.get_product!(item.product_id)

@@ -1,6 +1,8 @@
 <div class="flex">
-  <.invoice_navigation company_name={@company_name} user_is_admin={@user_is_admin}>
-  </.invoice_navigation>
+  <InvoiceManagerWeb.Live.Show.invoice_navigation
+    company_name={@company_name}
+    user_is_admin={@user_is_admin}
+  />
   <div class="flex-grow mx-auto max-w-sm">
     <div>
       <.simple_form for={@form} phx-submit="create" class="relative">

@@ -1,6 +1,8 @@
 <div class="flex">
-  <.invoice_navigation company_name={@company.name} user_is_admin={@user_is_admin}>
-  </.invoice_navigation>
+  <InvoiceManagerWeb.Live.Show.invoice_navigation
+    company_name={@company.name}
+    user_is_admin={@user_is_admin}
+  />
 
   <div class="flex-grow">
     <div class="flex space-x-8 bg-amber-50 shadow rounded px-8 pt-6 pb-8 mb-4 basis-1/3">

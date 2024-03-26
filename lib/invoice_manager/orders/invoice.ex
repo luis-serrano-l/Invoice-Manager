@@ -34,6 +34,30 @@ defmodule InvoiceManager.Orders.Invoice do
     ])
   end
 
+  @doc false
+  def full_changeset(invoice, attrs, params) do
+    invoice
+    |> cast(params, [])
+    |> cast_assoc(:items)
+    |> cast(attrs, [
+      :billing_date,
+      :operation_date,
+      :tax_rate,
+      :discount,
+      :total,
+      :extra_info,
+      :sent
+    ])
+    |> validate_required([
+      :billing_date,
+      :tax_rate,
+      :total
+    ])
+    |> validate_number(:tax_rate, greater_than: -0.01)
+    |> validate_number(:discount, greater_than: -0.01)
+    |> validate_number(:total, greater_than: 0)
+  end
+
   def changeset_to_send(invoice, attrs) do
     invoice
     |> cast(attrs, [

@@ -1,7 +1,8 @@
 <div class="flex">
-  <.invoice_navigation company_name={@company_name} user_is_admin={@user_is_admin}>
-  </.invoice_navigation>
-
+  <InvoiceManagerWeb.Live.Show.invoice_navigation
+    company_name={@company_name}
+    user_is_admin={@user_is_admin}
+  />
   <div class="flex space-x-6 bg-amber-50 shadow rounded px-6 pt-6 pb-8 mb-4 basis-1/3">
     <div class="bg-white shadow rounded px-4 pt-6 pb-4 mb-4 basis-1/2 flex-auto w-64">
       <.simple_form for={@form} phx-change="validate" phx-submit="save">
@@ -228,26 +229,7 @@
         <:col :let={product} label="Price"><%= product.price %></:col>
         <:col :let={product} label="Stock"><%= product.stock %></:col>
       </.table>
-      <div class="flex justify-between">
-        <button
-          phx-click="change-page"
-          phx-value-direction="left"
-          phx-value-current_offest={@pagination.offset}
-          class="border border-blue-700 mt-2 bg-blue-500 text-white font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600"
-        >
-          &lt;
-        </button>
-        <button
-          phx-click="change-page"
-          phx-value-direction="right"
-          class="border border-blue-700 mt-2 bg-blue-500 text-white font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600"
-        >
-          &gt;
-        </button>
-      </div>
-      <div class="flex justify-center">
-        <%= @pagination.page_num %> / <%= @pagination.pages %>
-      </div>
+      <InvoiceManagerWeb.Live.Show.pagination pagination={@pagination} />
     </div>
   </div>
 </div>
