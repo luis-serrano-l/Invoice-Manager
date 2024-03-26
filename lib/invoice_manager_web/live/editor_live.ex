@@ -24,6 +24,12 @@ defmodule InvoiceManagerWeb.EditorLive do
     items = Orders.list_items(invoice_id) |> Orders.update_item_price_and_name()
     company_id = user.company_id
 
+    pagination =
+      (Inventory.count_products(company_id) / @size)
+      |> ceil()
+      |> max(1)
+      |> paginate(0, 1, 0)
+
     socket =
       assign(socket,
         user_is_admin: user.is_admin,
@@ -38,7 +44,7 @@ defmodule InvoiceManagerWeb.EditorLive do
         form: to_form(Orders.change_invoice(invoice)),
         operation_date: Date.utc_today(),
         costs: get_costs(items, invoice.tax_rate, invoice.discount),
-        pagination: new_paginate(company_id, @size),
+        pagination: pagination,
         options: %{product_id_to_change: nil, new_item: true, is_saved: false}
       )
 
@@ -53,22 +59,15 @@ defmodule InvoiceManagerWeb.EditorLive do
   end
 
   def handle_event("change-page", %{"direction" => direction}, socket) do
+    move = if direction == "right", do: 1, else: -1
     pagination = socket.assigns.pagination
-    company_id = socket.assigns.company_id
+    offset = pagination.offset + @size * move
 
-    case {{pagination.page_num, pagination.pages}, direction} do
-      {{last, last}, "right"} ->
-        {:noreply, put_flash(socket, :error, "Reached last page")}
-
-      {{1, _}, "left"} ->
-        {:noreply, put_flash(socket, :error, "Already first page")}
-
-      {_, "right"} ->
-        {:noreply, assign(socket, change_page(company_id, pagination, 1, @size))}
-
-      {_, "left"} ->
-        {:noreply, assign(socket, change_page(company_id, pagination, -1, @size))}
-    end
+    {:noreply,
+     assign(socket,
+       pagination: paginate(pagination.pages, offset, pagination.page_num, move),
+       products: Inventory.list_products(socket.assigns.company_id, @size, offset)
+     )}
   end
 
   def handle_event("validate", %{"invoice" => params}, socket) do
@@ -153,7 +152,7 @@ defmodule InvoiceManagerWeb.EditorLive do
     items = socket.assigns.items
 
     if product_id in Enum.map(items, & &1.product_id) do
-      items = change_item_quantity(items, product_id, 1, 1)
+      items = increase_item_quantity(items, product_id)
 
       {:noreply,
        socket
@@ -180,7 +179,7 @@ defmodule InvoiceManagerWeb.EditorLive do
     product_id_to_change = socket.assigns.options.product_id_to_change
     new_quantity = String.to_integer(new_quantity)
 
-    items = change_item_quantity(socket.assigns.items, product_id_to_change, new_quantity)
+    items = set_item_quantity(socket.assigns.items, product_id_to_change, new_quantity)
 
     {:noreply,
      socket
@@ -216,16 +215,29 @@ defmodule InvoiceManagerWeb.EditorLive do
      |> assign(options: Map.put(socket.assigns.options, :is_saved, false))}
   end
 
-  defp change_item_quantity(items, product_id_to_change, quantity, add \\ 0) do
+  @spec increase_item_quantity(list(struct()), pos_integer()) :: list(struct())
+  defp increase_item_quantity(items, product_id_to_change) do
     for item <- items do
       if item.product_id == product_id_to_change do
-        %{item | quantity: item.quantity * add + quantity}
+        %{item | quantity: item.quantity + 1}
       else
         item
       end
     end
   end
 
+  @spec set_item_quantity(list(struct()), pos_integer(), non_neg_integer()) :: list(struct())
+  defp set_item_quantity(items, product_id_to_change, new_quantity) do
+    for item <- items do
+      if item.product_id == product_id_to_change do
+        %{item | quantity: new_quantity}
+      else
+        item
+      end
+    end
+  end
+
+  @spec get_number(String.t()) :: float() | 0
   defp get_number(""), do: 0
 
   defp get_number(number) do
@@ -233,10 +245,12 @@ defmodule InvoiceManagerWeb.EditorLive do
     float
   end
 
-  defp is_before?(invoice_params) do
+  @spec before?(map()) :: boolean()
+  defp before?(invoice_params) do
     Map.get(invoice_params, "billing_date") < Date.to_string(Date.utc_today())
   end
 
+  @spec error(list(struct()), map(), map()) :: String.t() | nil
   defp error(items, costs, invoice_params) do
     cond do
       stock_unavailable?(items) ->
@@ -246,7 +260,7 @@ defmodule InvoiceManagerWeb.EditorLive do
       costs.total <= 0 ->
         "Total should be higher than 0"
 
-      is_before?(invoice_params) ->
+      before?(invoice_params) ->
         "Billing date cannot be before today"
 
       true ->
@@ -254,6 +268,7 @@ defmodule InvoiceManagerWeb.EditorLive do
     end
   end
 
+  @spec stock_unavailable?(list(struct())) :: tuple() | false
   defp stock_unavailable?([]), do: false
 
   defp stock_unavailable?([item | rest]) do

@@ -10,6 +10,7 @@ defmodule InvoiceManager.Inventory do
   alias InvoiceManager.Inventory.Product
   alias InvoiceManager.Repo
 
+  @spec list_products(integer(), integer(), integer()) :: [struct()]
   def list_products(company_id, size, offset) do
     products =
       from p in Product,
@@ -22,6 +23,7 @@ defmodule InvoiceManager.Inventory do
     Repo.all(products)
   end
 
+  @spec search_products(integer(), String.t()) :: [struct()]
   def search_products(company_id, product_string) do
     products =
       from p in Product,
@@ -32,6 +34,7 @@ defmodule InvoiceManager.Inventory do
     Repo.all(products)
   end
 
+  @spec count_products(integer()) :: integer()
   def count_products(company_id) do
     products =
       from p in Product,
@@ -96,6 +99,7 @@ defmodule InvoiceManager.Inventory do
     |> Repo.update()
   end
 
+  @spec update_each_product_stock(integer(), [struct()]) :: tuple()
   def update_each_product_stock(company_id, items) do
     ids_for_update = Enum.map(items, & &1.product_id)
 

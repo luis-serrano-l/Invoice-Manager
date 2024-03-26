@@ -37,6 +37,7 @@ defmodule InvoiceManagerWeb.ViewInvoiceLive do
     end
   end
 
+  @spec has_access?(String.t(), struct(), integer()) :: boolean()
   defp has_access?("outgoing", invoice, my_company_id) do
     invoice.company_id == my_company_id
   end

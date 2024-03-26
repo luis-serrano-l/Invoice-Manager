@@ -13,6 +13,12 @@ defmodule InvoiceManagerWeb.MyProductsLive do
     user = Accounts.get_user_by_session_token(session["user_token"])
     company_id = user.company_id
 
+    pagination =
+      (Inventory.count_products(company_id) / @size)
+      |> ceil()
+      |> max(1)
+      |> paginate(0, 1, 0)
+
     socket =
       assign(socket,
         user: user,
@@ -21,7 +27,7 @@ defmodule InvoiceManagerWeb.MyProductsLive do
         company_name: Business.get_company_name(company_id),
         form: to_form(Inventory.change_product(%Product{})),
         user_is_admin: user.is_admin,
-        pagination: new_paginate(company_id, @size),
+        pagination: pagination,
         product_search: "",
         options: %{
           new_product: true,
@@ -44,22 +50,15 @@ defmodule InvoiceManagerWeb.MyProductsLive do
   end
 
   def handle_event("change-page", %{"direction" => direction}, socket) do
+    move = if direction == "right", do: 1, else: -1
     pagination = socket.assigns.pagination
-    company_id = socket.assigns.company_id
+    offset = pagination.offset + @size * move
 
-    case {{pagination.page_num, pagination.pages}, direction} do
-      {{last, last}, "right"} ->
-        {:noreply, put_flash(socket, :error, "Reached last page")}
-
-      {{1, _}, "left"} ->
-        {:noreply, put_flash(socket, :error, "Already first page")}
-
-      {_, "right"} ->
-        {:noreply, assign(socket, change_page(company_id, pagination, 1, @size))}
-
-      {_, "left"} ->
-        {:noreply, assign(socket, change_page(company_id, pagination, -1, @size))}
-    end
+    {:noreply,
+     assign(socket,
+       pagination: paginate(pagination.pages, offset, pagination.page_num, move),
+       products: Inventory.list_products(socket.assigns.company_id, @size, offset)
+     )}
   end
 
   def handle_event("validate", %{"product" => params}, socket) do
@@ -153,6 +152,7 @@ defmodule InvoiceManagerWeb.MyProductsLive do
      )}
   end
 
+  @spec convert_price_to_float(map()) :: map()
   defp convert_price_to_float(params) do
     {float, _} = Float.parse(params["price"])
     Map.put(params, "price", float)
